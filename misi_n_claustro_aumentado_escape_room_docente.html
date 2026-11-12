@@ -1,0 +1,2579 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Misión: Claustro Aumentado | Escape Room Docente</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Inter, Orbitron y JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&family=Orbitron:wght@600;700;800;900&display=swap" rel="stylesheet" />
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            hud: ['Orbitron', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            command: {
+              bg: '#060a13',
+              panel: '#0d1526',
+              card: '#111c33',
+              border: '#1e3a5f',
+              cyan: '#06b6d4',
+              emerald: '#10b981',
+              amber: '#f59e0b',
+              crimson: '#ef4444',
+            }
+          }
+        }
+      }
+    };
+  </script>
+
+  <style>
+    /* Fondo de cuadrícula futurista estilo centro de mando */
+    body {
+      background-color: #060a13;
+      background-image:
+        radial-gradient(circle at 50% 0%, rgba(6, 182, 212, 0.14), transparent 55%),
+        radial-gradient(circle at 85% 85%, rgba(16, 185, 129, 0.08), transparent 45%),
+        linear-gradient(to right, rgba(30, 58, 95, 0.18) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(30, 58, 95, 0.18) 1px, transparent 1px);
+      background-size: 100% 100%, 100% 100%, 36px 36px, 36px 36px;
+      color: #e2e8f0;
+      overflow-x: hidden;
+    }
+
+    /* Resplandores HUD */
+    .hud-glow-cyan {
+      box-shadow: 0 0 25px rgba(6, 182, 212, 0.22), inset 0 0 12px rgba(6, 182, 212, 0.08);
+    }
+    .hud-glow-emerald {
+      box-shadow: 0 0 25px rgba(16, 185, 129, 0.25), inset 0 0 12px rgba(16, 185, 129, 0.08);
+    }
+    .hud-glow-amber {
+      box-shadow: 0 0 20px rgba(245, 158, 11, 0.2);
+    }
+
+    /* Animación de sacudida para contraseña incorrecta */
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      20%, 60% { transform: translateX(-8px); }
+      40%, 80% { transform: translateX(8px); }
+    }
+    .animate-shake {
+      animation: shake 0.42s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+    }
+
+    /* Animación flotante de penalización (-2 min) */
+    @keyframes floatPenalty {
+      0% { opacity: 1; transform: translateY(0) scale(1); }
+      100% { opacity: 0; transform: translateY(-28px) scale(1.12); }
+    }
+    .animate-penalty {
+      animation: floatPenalty 1.5s ease-out forwards;
+    }
+
+    /* Línea de escaneo sutil */
+    .scanline {
+      background: linear-gradient(
+        to bottom,
+        rgba(255, 255, 255, 0),
+        rgba(255, 255, 255, 0) 50%,
+        rgba(6, 182, 212, 0.03) 50%,
+        rgba(6, 182, 212, 0.03)
+      );
+      background-size: 100% 4px;
+    }
+
+    /* Scrollbar discreto para visor de documentos */
+    .custom-scroll::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scroll::-webkit-scrollbar-track {
+      background: #070c18;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb {
+      background: #1e3a5f;
+      border-radius: 9999px;
+    }
+
+    /* Estilos específicos para impresión limpia del diploma */
+    @media print {
+      body {
+        background: #ffffff !important;
+        color: #0f172a !important;
+      }
+      header,
+      #welcome-screen,
+      #room-screen,
+      #share-screen,
+      #victory-actions,
+      #confetti-canvas,
+      #toast-container,
+      #confirm-modal,
+      #material-modal {
+        display: none !important;
+      }
+      #victory-screen {
+        display: block !important;
+        padding: 0 !important;
+        margin: 0 !important;
+      }
+      #victory-banner,
+      #victory-stats {
+        display: none !important;
+      }
+      #diploma-wrapper {
+        box-shadow: none !important;
+        border: 4px solid #0e7490 !important;
+        background: #ffffff !important;
+        color: #0f172a !important;
+        max-width: 100% !important;
+        width: 100% !important;
+        margin: 0 auto !important;
+        page-break-inside: avoid;
+      }
+      #diploma-wrapper * {
+        color: #0f172a !important;
+      }
+      #diploma-wrapper .print-accent {
+        color: #0e7490 !important;
+      }
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col font-sans antialiased selection:bg-cyan-500/30 selection:text-cyan-200">
+
+  <!-- ===================================================================== -->
+  <!-- BARRA SUPERIOR FIJA (HEADER HUD)                                      -->
+  <!-- ===================================================================== -->
+  <header class="fixed top-0 inset-x-0 z-40 bg-[#070c18]/95 backdrop-blur-md border-b border-cyan-500/30 shadow-lg shadow-black/50">
+    <div class="max-w-7xl mx-auto px-3 sm:px-6 py-2.5 flex flex-wrap items-center justify-between gap-3">
+
+      <!-- Identidad del Taller -->
+      <div class="flex items-center gap-2.5 min-w-0">
+        <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-cyan-500/15 border border-cyan-400/50 flex items-center justify-center text-cyan-400 shrink-0 hud-glow-cyan">
+          <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
+          </svg>
+        </div>
+        <div class="truncate">
+          <div class="flex items-center gap-2">
+            <span class="text-[10px] font-mono uppercase tracking-widest text-cyan-400 hidden sm:inline">CENTRO DE MANDO DOCENTE</span>
+            <span id="system-status-badge" class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono bg-amber-500/15 text-amber-300 border border-amber-500/30">
+              <span id="status-dot" class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+              <span id="status-text">EN ESPERA</span>
+            </span>
+          </div>
+          <h1 class="font-hud text-sm sm:text-base md:text-lg font-bold tracking-wide text-white truncate">
+            Misión: Claustro Aumentado
+          </h1>
+        </div>
+      </div>
+
+      <!-- Indicador de Progreso (Salas 1 a 4) -->
+      <nav aria-label="Progreso de Salas" class="order-3 lg:order-2 w-full lg:w-auto flex items-center justify-center">
+        <div id="progress-stepper" class="flex items-center gap-1.5 sm:gap-2 bg-[#0d1526] px-3 py-1.5 rounded-xl border border-slate-800 w-full sm:w-auto justify-between sm:justify-center">
+          <!-- Se genera dinámicamente por JS -->
+        </div>
+      </nav>
+
+      <!-- Temporizador de Cuenta Atrás (180 min) + Controles -->
+      <div class="order-2 lg:order-3 flex items-center gap-2 sm:gap-3 ml-auto lg:ml-0">
+        <!-- Visor del Cronómetro -->
+        <div class="relative flex items-center gap-2 bg-[#0d1526] border border-cyan-500/40 rounded-xl px-2.5 sm:px-3.5 py-1.5 hud-glow-cyan">
+          <svg class="w-4 h-4 text-cyan-400 hidden sm:block shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <div class="text-right">
+            <div id="timer-display" class="font-hud text-base sm:text-xl font-extrabold tracking-wider text-cyan-300 leading-none">
+              03:00:00
+            </div>
+            <div id="timer-sublabel" class="text-[9px] font-mono text-slate-400 uppercase tracking-wider mt-0.5">
+              180 MINUTOS
+            </div>
+          </div>
+          <!-- Contenedor para animación flotante de -2 min -->
+          <div id="penalty-anchor" class="pointer-events-none absolute -bottom-6 right-2"></div>
+        </div>
+
+        <!-- Botones de Control: Iniciar, Pausar, Reiniciar -->
+        <div class="flex items-center gap-1 sm:gap-1.5">
+          <button
+            id="btn-timer-start"
+            type="button"
+            title="Iniciar temporizador"
+            class="px-2.5 py-2 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/35 text-emerald-300 border border-emerald-500/40 text-xs font-semibold flex items-center gap-1 transition active:scale-95"
+          >
+            <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
+            </svg>
+            <span class="hidden sm:inline">Iniciar</span>
+          </button>
+
+          <button
+            id="btn-timer-pause"
+            type="button"
+            title="Pausar temporizador"
+            class="px-2.5 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/35 text-amber-300 border border-amber-500/40 text-xs font-semibold flex items-center gap-1 transition active:scale-95"
+          >
+            <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M5.75 3a.75.75 0 00-.75.75v12.5c0 .414.336.75.75.75h1.5a.75.75 0 00.75-.75V3.75A.75.75 0 007.25 3h-1.5zM12.75 3a.75.75 0 00-.75.75v12.5c0 .414.336.75.75.75h1.5a.75.75 0 00.75-.75V3.75a.75.75 0 00-.75-.75h-1.5z" />
+            </svg>
+            <span class="hidden sm:inline">Pausar</span>
+          </button>
+
+          <button
+            id="btn-timer-reset"
+            type="button"
+            title="Reiniciar misión y temporizador"
+            class="px-2.5 py-2 rounded-xl bg-rose-500/20 hover:bg-rose-500/35 text-rose-300 border border-rose-500/40 text-xs font-semibold flex items-center gap-1 transition active:scale-95"
+          >
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            <span class="hidden sm:inline">Reiniciar</span>
+          </button>
+
+          <!-- Botón de sonido -->
+          <button
+            id="btn-sound-toggle"
+            type="button"
+            title="Activar / Silenciar efectos de sonido"
+            class="p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 transition"
+          >
+            <svg id="icon-sound-on" class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+            </svg>
+            <svg id="icon-sound-off" class="w-4 h-4 text-slate-500 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15zM17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- ===================================================================== -->
+  <!-- CONTENEDOR PRINCIPAL (CON ESPACIO PARA HEADER FIJO)                   -->
+  <!-- ===================================================================== -->
+  <main class="flex-1 pt-28 lg:pt-24 pb-12 px-4 sm:px-6 flex flex-col justify-center">
+
+    <!-- =================================================================== -->
+    <!-- PANTALLA 1: BIENVENIDA (CENTRO DE MANDO EDUCATIVO FUTURISTA)        -->
+    <!-- =================================================================== -->
+    <section id="welcome-screen" class="max-w-4xl mx-auto w-full">
+      <div class="relative rounded-3xl bg-[#0d1526]/90 border border-cyan-500/40 p-6 sm:p-10 md:p-12 hud-glow-cyan scanline overflow-hidden">
+        <!-- Esquinas decorativas HUD -->
+        <div class="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-cyan-400 rounded-tl-3xl"></div>
+        <div class="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-cyan-400 rounded-tr-3xl"></div>
+        <div class="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-cyan-400 rounded-bl-3xl"></div>
+        <div class="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-cyan-400 rounded-br-3xl"></div>
+
+        <!-- Alerta de protocolo -->
+        <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-rose-500/15 border border-rose-500/40 text-rose-300 text-xs font-mono uppercase tracking-wider mb-6">
+          <span class="w-2 h-2 rounded-full bg-rose-500 animate-ping"></span>
+          <span>ALERTA CRÍTICA // PROTOCOLO DE EMERGENCIA EDUCATIVA</span>
+        </div>
+
+        <h2 class="font-hud text-2xl sm:text-4xl md:text-5xl font-black text-white tracking-tight leading-tight mb-4">
+          MISIÓN: <span class="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-teal-300 to-emerald-400">CLAUSTRO AUMENTADO</span>
+        </h2>
+
+        <!-- Narrativa inicial exacta -->
+        <div class="my-6 p-5 sm:p-6 rounded-2xl bg-[#070c18]/90 border-l-4 border-cyan-400 shadow-inner">
+          <p class="font-mono text-xs text-cyan-400 uppercase tracking-widest mb-2">&gt; TRANSMISIÓN ENTRANTE DEL SERVIDOR CENTRAL:</p>
+          <p class="text-base sm:text-xl text-slate-100 leading-relaxed font-medium">
+            «El sistema de gestión y recursos del instituto ha colapsado. Tenéis 180 minutos para entrenar a vuestros asistentes de IA y restaurar el aula»
+          </p>
+        </div>
+
+        <!-- Vista previa de los 4 sectores -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 my-7">
+          <div class="p-3.5 rounded-2xl bg-[#111c33]/80 border border-slate-800">
+            <div class="text-xs font-mono text-cyan-400 mb-1">SALA 01</div>
+            <div class="text-sm font-bold text-white">El Despacho Burocrático</div>
+            <div class="text-xs text-slate-400 mt-1">Skill Secretario/a + Archivos</div>
+          </div>
+          <div class="p-3.5 rounded-2xl bg-[#111c33]/80 border border-slate-800">
+            <div class="text-xs font-mono text-cyan-400 mb-1">SALA 02</div>
+            <div class="text-sm font-bold text-white">El Archivo Vivo</div>
+            <div class="text-xs text-slate-400 mt-1">NotebookLM &amp; Artefactos</div>
+          </div>
+          <div class="p-3.5 rounded-2xl bg-[#111c33]/80 border border-slate-800">
+            <div class="text-xs font-mono text-cyan-400 mb-1">SALA 03</div>
+            <div class="text-sm font-bold text-white">El Oráculo de la Evaluación</div>
+            <div class="text-xs text-slate-400 mt-1">Skill Correctora &amp; Rúbrica PDF</div>
+          </div>
+          <div class="p-3.5 rounded-2xl bg-[#111c33]/80 border border-slate-800">
+            <div class="text-xs font-mono text-cyan-400 mb-1">SALA 04</div>
+            <div class="text-sm font-bold text-white">Ecosistema Conectado</div>
+            <div class="text-xs text-slate-400 mt-1">Classroom &amp; Canva</div>
+          </div>
+        </div>
+
+        <!-- Identificación del Equipo y Botón Principal -->
+        <div class="mt-8 flex flex-col sm:flex-row items-stretch sm:items-end gap-4">
+          <div class="flex-1">
+            <label for="team-name-input" class="block text-xs font-mono uppercase tracking-wider text-cyan-300 mb-2">
+              Nombre del Equipo Docente (para el diploma final)
+            </label>
+            <input
+              id="team-name-input"
+              type="text"
+              maxlength="60"
+              placeholder="Ej. Claustro Innovador - Mesa 3"
+              class="w-full px-4 py-3.5 rounded-2xl bg-[#070c18] border border-cyan-500/40 text-white placeholder-slate-500 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-500/30 transition text-sm sm:text-base"
+            />
+          </div>
+
+          <button
+            id="btn-start-mission"
+            type="button"
+            class="px-8 py-4 rounded-2xl bg-gradient-to-r from-cyan-500 to-emerald-500 hover:from-cyan-400 hover:to-emerald-400 text-slate-950 font-hud font-extrabold text-base sm:text-lg tracking-wider uppercase shadow-lg shadow-cyan-500/25 flex items-center justify-center gap-3 transition transform hover:-translate-y-0.5 active:scale-95 cursor-pointer"
+          >
+            <span>Iniciar Misión</span>
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- PANTALLA 2: SALAS SECUENCIALES (1 A 4)                              -->
+    <!-- =================================================================== -->
+    <section id="room-screen" class="max-w-4xl mx-auto w-full hidden">
+      <div id="room-card" class="relative rounded-3xl bg-[#0d1526]/95 border border-cyan-500/40 p-6 sm:p-9 md:p-10 hud-glow-cyan transition-all">
+
+        <!-- Cabecera de la Sala -->
+        <div class="flex flex-wrap items-center justify-between gap-3 pb-6 border-b border-slate-800">
+          <div>
+            <div class="flex items-center gap-2.5 mb-1.5">
+              <span id="room-sector-tag" class="px-3 py-1 rounded-lg bg-cyan-500/15 border border-cyan-400/40 text-cyan-300 font-mono text-xs font-bold tracking-wider">
+                SALA 1 DE 4
+              </span>
+              <span id="room-lock-badge" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-amber-500/15 border border-amber-500/40 text-amber-300 font-mono text-xs">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+                <span>ACCESO BLOQUEADO</span>
+              </span>
+            </div>
+            <h2 id="room-title" class="font-hud text-2xl sm:text-3xl font-extrabold text-white tracking-wide">
+              SALA 1: "El Despacho Burocrático"
+            </h2>
+          </div>
+
+          <!-- Icono temático de la sala -->
+          <div id="room-icon-box" class="w-14 h-14 rounded-2xl bg-cyan-500/10 border border-cyan-400/30 flex items-center justify-center text-cyan-400 shrink-0">
+            <!-- Inyectado por JS -->
+          </div>
+        </div>
+
+        <!-- Cuerpo del Reto -->
+        <div class="my-6">
+          <div class="flex items-center gap-2 text-xs font-mono uppercase tracking-widest text-cyan-400 mb-2.5">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+            </svg>
+            <span>OBJETIVO DE RESTAURACIÓN (RETO)</span>
+          </div>
+
+          <div class="p-5 sm:p-6 rounded-2xl bg-[#070c18] border border-slate-800 text-slate-100 text-base sm:text-lg leading-relaxed">
+            <p id="room-challenge" class="font-medium"></p>
+          </div>
+        </div>
+
+        <!-- =============================================================== -->
+        <!-- MATERIALES EXTRA DEL RETO (ARCHIVOS DESCARGABLES + ENLACES IA)  -->
+        <!-- =============================================================== -->
+        <div id="room-materials-section" class="my-6 p-5 rounded-2xl bg-[#080f1e] border border-cyan-500/25">
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-3.5">
+            <div class="flex items-center gap-2 text-xs font-mono uppercase tracking-widest text-emerald-400">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+              </svg>
+              <span>ARCHIVOS Y RECURSOS DE LA MISIÓN</span>
+            </div>
+            <span class="text-[11px] font-mono text-slate-400">Descarga o copia los documentos para entrenar tu IA</span>
+          </div>
+
+          <!-- Cuadrícula de archivos descargables / copiables -->
+          <div id="room-files-grid" class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <!-- Inyectado dinámicamente por JS -->
+          </div>
+
+          <!-- Enlaces rápidos a herramientas externas de la sala -->
+          <div id="room-tools-bar" class="mt-4 pt-3.5 border-t border-slate-800/80 flex flex-wrap items-center gap-2">
+            <!-- Inyectado dinámicamente por JS -->
+          </div>
+        </div>
+
+        <!-- Zona de Pista (-2 min) -->
+        <div class="my-6">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <button
+              id="btn-request-hint"
+              type="button"
+              class="px-4 py-2.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/40 text-xs sm:text-sm font-semibold flex items-center gap-2 transition active:scale-95 cursor-pointer"
+            >
+              <svg class="w-4 h-4 text-amber-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+              </svg>
+              <span id="hint-btn-label">Pedir Pista (-2 min)</span>
+            </button>
+
+            <span id="hint-penalty-note" class="text-xs font-mono text-slate-400">
+              Coste de descifrado: <strong class="text-amber-400">-02:00 min</strong> del temporizador
+            </span>
+          </div>
+
+          <!-- Caja de Pista Desplegable -->
+          <div id="hint-box" class="hidden mt-3.5 p-4 sm:p-5 rounded-2xl bg-amber-500/10 border border-amber-500/40 text-amber-100 hud-glow-amber">
+            <div class="flex items-start gap-3">
+              <div class="p-2 rounded-xl bg-amber-500/20 text-amber-300 shrink-0 mt-0.5">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div>
+                <div class="text-xs font-mono uppercase tracking-wider text-amber-300 font-bold mb-1">
+                  TRANSMISIÓN DE AYUDA DESCIFRADA (-2 MIN APLICADOS)
+                </div>
+                <p id="hint-text" class="text-sm sm:text-base leading-relaxed text-amber-50"></p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Formulario de Desbloqueo de Contraseña -->
+        <form id="unlock-form" class="mt-7 pt-6 border-t border-slate-800">
+          <label for="room-password-input" class="block text-xs font-mono uppercase tracking-widest text-cyan-300 mb-2.5">
+            INTRODUCE EL CÓDIGO DE DESBLOQUEO DE LA SALA
+          </label>
+
+          <div class="flex flex-col sm:flex-row gap-3">
+            <div class="relative flex-1">
+              <input
+                id="room-password-input"
+                type="text"
+                autocomplete="off"
+                spellcheck="false"
+                placeholder="Escribe la contraseña obtenida..."
+                class="w-full px-4 py-3.5 rounded-2xl bg-[#070c18] border border-cyan-500/40 font-mono text-base sm:text-lg tracking-wider text-white placeholder-slate-500 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-500/30 transition uppercase"
+              />
+            </div>
+
+            <button
+              type="submit"
+              class="px-7 py-3.5 rounded-2xl bg-gradient-to-r from-cyan-500 to-emerald-500 hover:from-cyan-400 hover:to-emerald-400 text-slate-950 font-hud font-bold text-sm sm:text-base tracking-wider uppercase shadow-lg shadow-cyan-500/20 flex items-center justify-center gap-2 transition transform hover:-translate-y-0.5 active:scale-95 cursor-pointer shrink-0"
+            >
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
+              </svg>
+              <span>Validar Código</span>
+            </button>
+          </div>
+
+          <!-- Mensaje de retroalimentación de contraseña -->
+          <p id="password-feedback" class="hidden mt-3 text-xs sm:text-sm font-mono flex items-center gap-2"></p>
+        </form>
+
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- PANTALLA INTERMEDIA: REPOSITORIO COLABORATIVO EN GOOGLE DRIVE       -->
+    <!-- =================================================================== -->
+    <section id="share-screen" class="max-w-4xl mx-auto w-full hidden">
+      <div class="relative rounded-3xl bg-[#0d1526]/95 border border-emerald-500/40 p-6 sm:p-9 md:p-10 hud-glow-emerald">
+
+        <!-- Cabecera de Fase Colaborativa -->
+        <div class="flex flex-wrap items-center justify-between gap-3 pb-6 border-b border-slate-800">
+          <div>
+            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-400/40 text-emerald-300 text-xs font-mono uppercase tracking-wider mb-2">
+              <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+              <span>FASE DE TRANSFERENCIA // REPOSITORIO DEL CLAUSTRO</span>
+            </div>
+            <h2 class="font-hud text-2xl sm:text-3xl font-extrabold text-white tracking-wide">
+              Comparte tus Retos en Google Drive
+            </h2>
+          </div>
+
+          <button
+            id="btn-toggle-drive-config"
+            type="button"
+            class="px-3.5 py-2 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-cyan-300 border border-cyan-500/30 text-xs font-mono flex items-center gap-1.5 transition cursor-pointer"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            <span>Configurar carpeta (Formador/a)</span>
+          </button>
+        </div>
+
+        <!-- Panel desplegable para que el formador configure el enlace real de Drive -->
+        <div id="drive-config-panel" class="hidden mt-5 p-4 sm:p-5 rounded-2xl bg-[#070c18] border border-cyan-500/40">
+          <div class="text-xs font-mono uppercase tracking-wider text-cyan-400 font-bold mb-1.5">
+            PANEL DEL FORMADOR/A — ENLACE DE CARPETA COMPARTIDA DE GOOGLE DRIVE
+          </div>
+          <p class="text-xs text-slate-400 mb-3 leading-relaxed">
+            Pega aquí la URL de la carpeta de Google Drive compartida con permisos de <strong class="text-slate-200">Editor</strong> para que todo el profesorado suba sus materiales:
+          </p>
+          <div class="flex flex-col sm:flex-row gap-2.5">
+            <input
+              id="drive-url-input"
+              type="url"
+              placeholder="https://drive.google.com/drive/folders/..."
+              class="flex-1 px-3.5 py-2.5 rounded-xl bg-[#0d1526] border border-slate-700 text-xs sm:text-sm font-mono text-white placeholder-slate-500 focus:outline-none focus:border-cyan-400"
+            />
+            <button
+              id="btn-save-drive-url"
+              type="button"
+              class="px-4 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs sm:text-sm transition cursor-pointer shrink-0"
+            >
+              Guardar Enlace
+            </button>
+            <button
+              id="btn-copy-shareable-app-url"
+              type="button"
+              title="Copia la URL de esta web incluyendo ya el enlace de Drive preconfigurado"
+              class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-emerald-300 border border-emerald-500/40 font-semibold text-xs sm:text-sm transition cursor-pointer shrink-0"
+            >
+              Copiar URL Taller
+            </button>
+          </div>
+        </div>
+
+        <!-- Bloque Principal: Acceso a la Carpeta Compartida de Drive -->
+        <div class="my-6 p-5 sm:p-6 rounded-2xl bg-[#070c18] border border-emerald-500/30">
+          <p class="text-sm sm:text-base text-slate-200 leading-relaxed mb-5">
+            ¡Enhorabuena! Habéis superado las 4 salas de la misión. Antes de recoger vuestro <strong class="text-cyan-300">Diploma Oficial</strong>, subid a la carpeta compartida del claustro los recursos que habéis creado (actas generadas, enlaces a vuestras <em>Skills</em>, tarjetas de repaso, rúbricas o presentaciones de Canva) para enriquecer el banco común del centro.
+          </p>
+
+          <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+            <a
+              id="drive-folder-link-btn"
+              href="https://drive.google.com/drive/my-drive"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="flex-1 px-6 py-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-slate-950 font-hud font-extrabold text-sm sm:text-base tracking-wide uppercase shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-3 transition transform hover:-translate-y-0.5"
+            >
+              <svg class="w-6 h-6 shrink-0" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M7.71 3.5L1.15 15l3.43 6 6.55-11.5L7.71 3.5zm1.72 0l6.56 11.5h6.86L16.29 3.5H9.43zm6.14 12.5H2.43l-1.28 2.25L4.58 21h14.84l3.43-5H15.57z" />
+              </svg>
+              <span>Abrir Carpeta Compartida en Drive</span>
+              <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              </svg>
+            </a>
+
+            <button
+              id="btn-copy-drive-link"
+              type="button"
+              class="px-5 py-4 rounded-2xl bg-[#111c33] hover:bg-[#182746] text-cyan-300 border border-cyan-500/40 font-semibold text-xs sm:text-sm flex items-center justify-center gap-2 transition cursor-pointer shrink-0"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2" />
+              </svg>
+              <span>Copiar enlace Drive</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Generador de Ficha de Aportación para subir junto con los archivos -->
+        <div class="my-6 p-5 sm:p-6 rounded-2xl bg-[#080f1e] border border-slate-800">
+          <div class="flex items-center justify-between gap-2 mb-3">
+            <h3 class="text-xs font-mono uppercase tracking-widest text-cyan-400 font-bold">
+              GENERADOR DE FICHA DE APORTACIÓN (OPCIONAL PARA SUBIR A DRIVE)
+            </h3>
+            <span class="text-[11px] font-mono text-slate-500">Identifica vuestros archivos</span>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+            <div>
+              <label for="share-team-input" class="block text-xs font-mono text-slate-400 mb-1.5">
+                Nombre del Equipo / Docentes participantes
+              </label>
+              <input
+                id="share-team-input"
+                type="text"
+                placeholder="Ej. Departamento de Ciencias - Mesa 2"
+                class="w-full px-3.5 py-2.5 rounded-xl bg-[#070c18] border border-slate-700 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-cyan-400"
+              />
+            </div>
+
+            <div>
+              <label class="block text-xs font-mono text-slate-400 mb-1.5">
+                Retos y evidencias que compartís
+              </label>
+              <div class="grid grid-cols-2 gap-1.5 text-xs text-slate-300">
+                <label class="flex items-center gap-1.5 cursor-pointer">
+                  <input type="checkbox" class="share-evidence-cb accent-emerald-500" value="Sala 1: Acta y Skill Secretario/a" checked />
+                  <span>Acta / Skill Sec.</span>
+                </label>
+                <label class="flex items-center gap-1.5 cursor-pointer">
+                  <input type="checkbox" class="share-evidence-cb accent-emerald-500" value="Sala 2: WebApp Tarjetas de Repaso" checked />
+                  <span>WebApp Repaso</span>
+                </label>
+                <label class="flex items-center gap-1.5 cursor-pointer">
+                  <input type="checkbox" class="share-evidence-cb accent-emerald-500" value="Sala 3: Skill Correctora y Rúbrica" checked />
+                  <span>Skill Correctora</span>
+                </label>
+                <label class="flex items-center gap-1.5 cursor-pointer">
+                  <input type="checkbox" class="share-evidence-cb accent-emerald-500" value="Sala 4: Presentación Canva (6 diap.) y Classroom" checked />
+                  <span>Canva + Classroom</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div class="mb-4">
+            <label for="share-links-input" class="block text-xs font-mono text-slate-400 mb-1.5">
+              Enlaces directos a vuestros Artefactos de Gemini, cuadernos de NotebookLM o presentaciones de Canva
+            </label>
+            <textarea
+              id="share-links-input"
+              rows="3"
+              placeholder="Pega aquí los enlaces compartidos de vuestros recursos o una breve descripción didáctica para el resto del claustro..."
+              class="w-full px-3.5 py-2.5 rounded-xl bg-[#070c18] border border-slate-700 text-xs sm:text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-cyan-400"
+            ></textarea>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2.5">
+            <button
+              id="btn-download-contribution"
+              type="button"
+              class="px-4 py-2.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 text-xs font-semibold flex items-center gap-2 transition cursor-pointer"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              <span>Descargar Ficha (.txt) para subir a Drive</span>
+            </button>
+
+            <button
+              id="btn-copy-contribution"
+              type="button"
+              class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold flex items-center gap-2 transition cursor-pointer"
+            >
+              <span>Copiar Ficha al Portapapeles</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Botón de Continuar hacia la Pantalla Final del Diploma -->
+        <div class="pt-5 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <span class="text-xs font-mono text-slate-400 text-center sm:text-left">
+            Cuando hayáis subido vuestros retos a Drive, avanzad para obtener vuestro diploma.
+          </span>
+
+          <button
+            id="btn-go-to-diploma"
+            type="button"
+            class="w-full sm:w-auto px-8 py-4 rounded-2xl bg-gradient-to-r from-cyan-500 to-emerald-500 hover:from-cyan-400 hover:to-emerald-400 text-slate-950 font-hud font-extrabold text-sm sm:text-base tracking-wider uppercase shadow-lg shadow-cyan-500/25 flex items-center justify-center gap-2.5 transition transform hover:-translate-y-0.5 active:scale-95 cursor-pointer"
+          >
+            <span>Continuar al Diploma Final</span>
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+            </svg>
+          </button>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- PANTALLA 3: VICTORIA FINAL + CONFETI + DIPLOMA DESCARGABLE          -->
+    <!-- =================================================================== -->
+    <section id="victory-screen" class="max-w-4xl mx-auto w-full hidden relative">
+      <!-- Canvas de Confeti -->
+      <canvas id="confetti-canvas" class="fixed inset-0 pointer-events-none z-50"></canvas>
+
+      <!-- Banner Superior de Misión Cumplida -->
+      <div id="victory-banner" class="text-center mb-6">
+        <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/15 border border-emerald-400/50 text-emerald-300 text-xs font-mono uppercase tracking-widest mb-3">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+          <span>SISTEMA EDUCATIVO RESTAURADO AL 100%</span>
+        </div>
+        <h2 class="font-hud text-3xl sm:text-5xl font-black text-white tracking-tight">
+          ¡MISIÓN <span class="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-300">SUPERADA</span>!
+        </h2>
+        <p class="text-slate-300 text-sm sm:text-base mt-2 max-w-2xl mx-auto">
+          Habéis entrenado con éxito a vuestros asistentes de IA y recuperado el ecosistema digital del instituto.
+        </p>
+      </div>
+
+      <!-- Métricas de Rendimiento -->
+      <div id="victory-stats" class="grid grid-cols-1 sm:grid-cols-3 gap-3.5 mb-7">
+        <div class="p-4 rounded-2xl bg-[#0d1526]/90 border border-emerald-500/40 text-center hud-glow-emerald">
+          <div class="text-xs font-mono text-slate-400 uppercase">Tiempo Total Invertido</div>
+          <div id="stat-time-used" class="font-hud text-2xl sm:text-3xl font-extrabold text-emerald-400 mt-1">
+            00:00:00
+          </div>
+        </div>
+        <div class="p-4 rounded-2xl bg-[#0d1526]/90 border border-cyan-500/40 text-center">
+          <div class="text-xs font-mono text-slate-400 uppercase">Tiempo Restante</div>
+          <div id="stat-time-left" class="font-hud text-2xl sm:text-3xl font-extrabold text-cyan-300 mt-1">
+            03:00:00
+          </div>
+        </div>
+        <div class="p-4 rounded-2xl bg-[#0d1526]/90 border border-amber-500/40 text-center">
+          <div class="text-xs font-mono text-slate-400 uppercase">Pistas Utilizadas</div>
+          <div id="stat-hints-used" class="font-hud text-2xl sm:text-3xl font-extrabold text-amber-300 mt-1">
+            0 / 4
+          </div>
+        </div>
+      </div>
+
+      <!-- ================================================================= -->
+      <!-- DIPLOMA OFICIAL VISUAL (EDITABLE, DESCARGABLE PNG E IMPRIMIBLE)   -->
+      <!-- ================================================================= -->
+      <div id="diploma-wrapper" class="relative rounded-3xl bg-gradient-to-br from-[#0b1324] via-[#0f1c34] to-[#08101e] border-2 border-cyan-400/70 p-6 sm:p-10 md:p-12 shadow-2xl hud-glow-cyan overflow-hidden">
+        <!-- Marco interior ornamental -->
+        <div class="border border-cyan-400/30 rounded-2xl p-5 sm:p-8 relative">
+          <!-- Sello superior -->
+          <div class="flex flex-col sm:flex-row items-center justify-between gap-4 pb-6 border-b border-cyan-500/25">
+            <div class="flex items-center gap-3">
+              <div class="w-12 h-12 rounded-2xl bg-cyan-500/15 border border-cyan-400/50 flex items-center justify-center text-cyan-300">
+                <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                </svg>
+              </div>
+              <div class="text-left">
+                <div class="text-[11px] font-mono uppercase tracking-widest text-cyan-400 print-accent">
+                  CERTIFICACIÓN DE COMPETENCIA DIGITAL DOCENTE
+                </div>
+                <div class="font-hud text-base sm:text-lg font-bold text-white">
+                  MISIÓN: CLAUSTRO AUMENTADO
+                </div>
+              </div>
+            </div>
+
+            <div class="text-center sm:text-right font-mono text-xs text-slate-400">
+              <div>CÓDIGO: <span class="text-emerald-400 font-bold print-accent">CLAUSTRO-LIBRE</span></div>
+              <div id="diploma-date">FECHA: --/--/----</div>
+            </div>
+          </div>
+
+          <!-- Cuerpo central del Diploma -->
+          <div class="text-center my-8">
+            <p class="text-xs sm:text-sm font-mono uppercase tracking-widest text-slate-400 mb-3">
+              SE OTORGA EL PRESENTE DIPLOMA DE ACREDITACIÓN AL EQUIPO:
+            </p>
+
+            <!-- Nombre editable del equipo directamente en el diploma -->
+            <div class="max-w-xl mx-auto my-3">
+              <input
+                id="diploma-team-input"
+                type="text"
+                value="Equipo Claustro Aumentado"
+                aria-label="Editar nombre del equipo en el diploma"
+                class="w-full text-center font-hud text-xl sm:text-3xl font-black text-cyan-300 print-accent bg-cyan-500/5 hover:bg-cyan-500/10 focus:bg-cyan-500/15 border-b-2 border-cyan-400/60 focus:border-cyan-300 rounded-t-xl px-3 py-2 focus:outline-none transition"
+              />
+              <span class="block text-[10px] font-mono text-slate-500 mt-1 print:hidden">
+                (Haz clic sobre el nombre para editarlo antes de descargar o imprimir)
+              </span>
+            </div>
+
+            <p class="text-sm sm:text-base text-slate-200 max-w-2xl mx-auto leading-relaxed mt-5">
+              Por haber superado con éxito las <strong class="text-white">4 Salas de Restauración Educativa</strong>, demostrando dominio práctico en la creación de <em>Skills</em> docentes con IA, curación de fuentes en NotebookLM, generación de artefactos interactivos, evaluación con rúbricas y despliegue en ecosistemas digitales de aula.
+            </p>
+          </div>
+
+          <!-- Insignias de las 4 salas superadas -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 my-6 text-center">
+            <div class="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30">
+              <div class="text-[10px] font-mono text-emerald-400 font-bold">SALA 1 ✓</div>
+              <div class="text-xs text-slate-200 font-semibold mt-0.5">Skill Secretario/a</div>
+            </div>
+            <div class="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30">
+              <div class="text-[10px] font-mono text-emerald-400 font-bold">SALA 2 ✓</div>
+              <div class="text-xs text-slate-200 font-semibold mt-0.5">Archivo Vivo &amp; App</div>
+            </div>
+            <div class="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30">
+              <div class="text-[10px] font-mono text-emerald-400 font-bold">SALA 3 ✓</div>
+              <div class="text-xs text-slate-200 font-semibold mt-0.5">Skill Correctora</div>
+            </div>
+            <div class="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30">
+              <div class="text-[10px] font-mono text-emerald-400 font-bold">SALA 4 ✓</div>
+              <div class="text-xs text-slate-200 font-semibold mt-0.5">Classroom &amp; Canva</div>
+            </div>
+          </div>
+
+          <!-- Pie de firma y tiempo -->
+          <div class="pt-6 border-t border-cyan-500/25 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-mono text-slate-400">
+            <div>
+              TIEMPO DE MISIÓN: <strong id="diploma-time-summary" class="text-emerald-400 print-accent">00:00:00</strong>
+            </div>
+            <div class="text-center">
+              <div class="w-44 border-b border-slate-600 mb-1 mx-auto"></div>
+              <span>COORDINACIÓN TALLER IA DOCENTE</span>
+            </div>
+            <div>
+              ESTADO: <strong class="text-cyan-300 print-accent">CLAUSTRO AUMENTADO</strong>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Botones de Acción del Diploma -->
+      <div id="victory-actions" class="mt-7 flex flex-wrap items-center justify-center gap-4">
+        <button
+          id="btn-download-diploma"
+          type="button"
+          class="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-cyan-500 to-emerald-500 hover:from-cyan-400 hover:to-emerald-400 text-slate-950 font-hud font-bold text-sm tracking-wider uppercase shadow-lg shadow-cyan-500/25 flex items-center gap-2.5 transition transform hover:-translate-y-0.5 active:scale-95 cursor-pointer"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+          </svg>
+          <span>Descargar Diploma (PNG)</span>
+        </button>
+
+        <button
+          id="btn-print-diploma"
+          type="button"
+          class="px-6 py-3.5 rounded-2xl bg-[#111c33] hover:bg-[#182746] text-cyan-300 border border-cyan-500/40 font-hud font-bold text-sm tracking-wider uppercase flex items-center gap-2.5 transition active:scale-95 cursor-pointer"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+          </svg>
+          <span>Imprimir Diploma</span>
+        </button>
+
+        <button
+          id="btn-back-to-drive"
+          type="button"
+          class="px-6 py-3.5 rounded-2xl bg-[#0d1526] hover:bg-[#15223d] text-emerald-300 border border-emerald-500/40 font-hud font-bold text-sm tracking-wider uppercase flex items-center gap-2.5 transition active:scale-95 cursor-pointer"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 17l-5-5m0 0l5-5m-5 5h12" />
+          </svg>
+          <span>Carpeta Drive del Claustro</span>
+        </button>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ===================================================================== -->
+  <!-- MODAL DE VISTA PREVIA Y COPIA RÁPIDA DE MATERIAL EXTRA                -->
+  <!-- ===================================================================== -->
+  <div id="material-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+    <div class="max-w-3xl w-full rounded-3xl bg-[#0d1526] border border-cyan-500/50 p-5 sm:p-7 shadow-2xl hud-glow-cyan flex flex-col max-h-[88vh]">
+      <div class="flex items-start justify-between gap-3 pb-4 border-b border-slate-800">
+        <div>
+          <div id="material-modal-tag" class="text-[11px] font-mono uppercase tracking-widest text-emerald-400">
+            ARCHIVO DE MISIÓN
+          </div>
+          <h3 id="material-modal-title" class="font-hud text-lg sm:text-xl font-bold text-white mt-0.5">
+            Título del Documento
+          </h3>
+        </div>
+        <button
+          id="btn-close-material-modal"
+          type="button"
+          class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 transition cursor-pointer"
+          aria-label="Cerrar visor"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <!-- Contenido del archivo -->
+      <div class="my-4 flex-1 overflow-y-auto custom-scroll rounded-2xl bg-[#070c18] border border-slate-800 p-4 sm:p-5">
+        <pre id="material-modal-content" class="whitespace-pre-wrap font-mono text-xs sm:text-sm text-slate-200 leading-relaxed"></pre>
+      </div>
+
+      <!-- Acciones del visor -->
+      <div class="pt-3 border-t border-slate-800 flex flex-wrap items-center justify-end gap-3">
+        <button
+          id="btn-modal-copy"
+          type="button"
+          class="px-4 py-2.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 text-xs sm:text-sm font-semibold flex items-center gap-2 transition cursor-pointer"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+          </svg>
+          <span>Copiar contenido</span>
+        </button>
+
+        <button
+          id="btn-modal-download"
+          type="button"
+          class="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs sm:text-sm flex items-center gap-2 transition cursor-pointer"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+          </svg>
+          <span id="btn-modal-download-label">Descargar Archivo</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- MODAL PERSONALIZADO DE CONFIRMACIÓN (SIN alert/confirm NATIVOS)       -->
+  <!-- ===================================================================== -->
+  <div id="confirm-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/75 backdrop-blur-sm p-4">
+    <div class="max-w-md w-full rounded-3xl bg-[#0d1526] border border-rose-500/40 p-6 shadow-2xl">
+      <div class="flex items-center gap-3 text-rose-400 mb-3">
+        <div class="p-2.5 rounded-xl bg-rose-500/15 border border-rose-500/30">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+        </div>
+        <h3 class="font-hud text-lg font-bold text-white">¿Reiniciar Misión?</h3>
+      </div>
+      <p class="text-sm text-slate-300 leading-relaxed mb-6">
+        Se restablecerá el temporizador a <strong class="text-white">180 minutos (03:00:00)</strong>, se volverán a bloquear todas las salas y volverás a la pantalla inicial.
+      </p>
+      <div class="flex items-center justify-end gap-3">
+        <button
+          id="btn-cancel-reset"
+          type="button"
+          class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-semibold transition cursor-pointer"
+        >
+          Cancelar
+        </button>
+        <button
+          id="btn-confirm-reset"
+          type="button"
+          class="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-sm font-bold transition cursor-pointer"
+        >
+          Sí, reiniciar todo
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Contenedor de Notificaciones Toast -->
+  <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none px-4 sm:px-0"></div>
+
+  <!-- ===================================================================== -->
+  <!-- LÓGICA DE LA APLICACIÓN (JAVASCRIPT PURO)                             -->
+  <!-- ===================================================================== -->
+  <script>
+    (function () {
+      'use strict';
+
+      // ===================================================================
+      // 1. CONFIGURACIÓN DE LAS 4 SALAS Y MATERIALES EXTRA EMBEBIDOS
+      // ===================================================================
+      const INITIAL_SECONDS = 180 * 60; // 180 minutos = 10800 segundos
+      const HINT_PENALTY_SECONDS = 2 * 60; // 2 minutos = 120 segundos
+
+      const ROOMS_DATA = [
+        {
+          id: 1,
+          shortName: 'Sala 1',
+          title: 'SALA 1: "El Despacho Burocrático"',
+          challenge: 'Crear una Skill Secretario/a que cruce la Plantilla Oficial con las notas sucias de la junta de evaluación.',
+          hint: 'Revisa el encabezado del acta generada; el código empieza por ACTA- seguido del año actual.',
+          password: 'ACTA-2026',
+          icon: `<svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>`,
+          materials: [
+            {
+              id: 's1-plantilla',
+              filename: 'Plantilla_Oficial_Acta_Junta.md',
+              label: 'Plantilla Oficial de Acta',
+              badge: 'MARKDOWN / TXT',
+              format: 'text',
+              mime: 'text/markdown;charset=utf-8',
+              description: 'Estructura institucional con el formato obligatorio de encabezado y campos de sesión.',
+              content: `# IES HORIZONTE DIGITAL — ACTA OFICIAL DE JUNTA DE EVALUACIÓN
+========================================================================
+CÓDIGO DE EXPEDIENTE: ACTA-[AÑO_DE_LA_SESIÓN]
+CURSO ACADÉMICO: 2025/2026
+GRUPO: [INDICAR GRUPO]
+EVALUACIÓN: [1ª / 2ª / ORDINARIA]
+FECHA DE LA SESIÓN: [DD/MM/AAAA]
+TUTOR/A DEL GRUPO: [NOMBRE Y APELLIDOS]
+========================================================================
+
+1. ASISTENTES Y QUÓRUM DEL EQUIPO DOCENTE
+- Relación de profesorado participante y ausencias justificadas: [COMPLETAR]
+
+2. VALORACIÓN GENERAL DEL RENDIMIENTO Y CONVIVENCIA DEL GRUPO
+- Síntesis académica y clima de aula: [COMPLETAR]
+
+3. ANÁLISIS INDIVIDUALIZADO Y MEDIDAS DE ATENCIÓN A LA DIVERSIDAD
+- Alumnado con evolución destacada: [COMPLETAR]
+- Alumnado con dificultades de aprendizaje y refuerzos acordados: [COMPLETAR]
+
+4. ACUERDOS ADOPTADOS Y COMUNICACIÓN A FAMILIAS
+- Compromisos del equipo docente y seguimiento tutorial: [COMPLETAR]
+
+Firmado electrónicamente en el Centro Educativo.`
+            },
+            {
+              id: 's1-notas',
+              filename: 'Notas_Sucias_Junta_Evaluacion.txt',
+              label: 'Notas Sucias de la Junta',
+              badge: 'ARCHIVO TXT',
+              format: 'text',
+              mime: 'text/plain;charset=utf-8',
+              description: 'Apuntes rápidos tomados en bruto durante la reunión de evaluación de 3º ESO B.',
+              content: `apuntes rapidos junta eval 3 eso B - fecha 18 marzo 2026
+tutora: Elena Martinez Ruiz
+asisten casi todos: mates (Carlos), lengua (Sofia), ingles (David), fyq (Marta), historia (Javier). falta educacion fisica por baja medica justificada.
+
+cosas comentadas del grupo:
+- en general buen ambiente pero hablan mucho a ultima hora, sobre todo los martes y jueves
+- bajon general en matematicas y fisica y quimica (hay 9 suspensos en fyq por falta de estudio diario)
+- muy participativos en proyectos cooperativos de historia e ingles
+
+casos concretos alumnos:
+* Lucía G.: brillante, todo 9 y 10, proponer para mencion honorifica
+* Marcos P.: falta mucho sin justificar (14 faltas este trimestre), llamar urgente a familia y activar protocolo absentismo
+* Aitor S. (ACNEAE): va mejorando mucho con las adaptaciones en lengua e ingles, mantener desdoble y darle mas tiempo en examenes
+* Clara V.: suspende 4 materias (mates, fyq, lengua, ingles) por desorganizacion, se acuerda plan de seguimiento semanal con la tutora y agenda firmada
+
+acuerdos finales:
+- reducir carga de deberes los fines de semana previos a examenes globales
+- reunion conjunta tutora + orientadora con familia de Marcos P. el viernes 20/03/2026 a las 10:30h
+- enviar boletines y observaciones por plataforma el lunes siguiente.`
+            }
+          ],
+          tools: [
+            {
+              name: 'Abrir Google Gemini (Crear Gem / Skill)',
+              url: 'https://gemini.google.com',
+              color: 'cyan'
+            }
+          ]
+        },
+        {
+          id: 2,
+          shortName: 'Sala 2',
+          title: 'SALA 2: "El Archivo Vivo"',
+          challenge: 'Subir el texto base a NotebookLM, extraer un cuestionario y crear una WebApp de Tarjetas de Repaso en Artefactos de Gemini.',
+          hint: 'Busca en el segundo párrafo del texto cómo se llaman los poros microscópicos del envés de las hojas.',
+          password: 'ESTOMAS',
+          icon: `<svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>`,
+          materials: [
+            {
+              id: 's2-texto-base',
+              filename: 'Texto_Base_Fotosintesis_Fisiologia_Vegetal.txt',
+              label: 'Texto Base: La Fotosíntesis',
+              badge: 'FUENTE TXT',
+              format: 'text',
+              mime: 'text/plain;charset=utf-8',
+              description: 'Documento de referencia curricular para subir como fuente a NotebookLM.',
+              content: `UNIDAD DIDÁCTICA: LA NUTRICIÓN AUTÓTROFA Y EL PROCESO DE LA FOTOSÍNTESIS
+
+La fotosíntesis es el proceso anabólico fundamental mediante el cual las plantas, las algas y ciertas bacterias transforman la energía lumínica del Sol en energía química estable. Este fenómeno tiene lugar principalmente en las células parenquimáticas de las hojas, dentro de unos orgánulos especializados denominados cloroplastos, los cuales contienen clorofila, el pigmento fotosintético responsable de captar los fotones de luz y otorgar el característico color verde a los tejidos vegetales.
+
+Para que se produzca la síntesis de materia orgánica, la planta necesita incorporar dióxido de carbono (CO2) procedente de la atmósfera y agua (H2O) absorbida por los pelos radicales de la raíz. El intercambio gaseoso entre la hoja y el aire exterior se realiza a través de unos poros microscópicos situados mayoritariamente en el envés de las hojas llamados estomas. Cada uno de estos poros está delimitado por dos células oclusivas arriñonadas que regulan su apertura y cierre para permitir la entrada de CO2 y controlar simultáneamente la pérdida de agua por transpiración.
+
+Desde el punto de vista bioquímico, la fotosíntesis se divide en dos etapas estrechamente acopladas. En la fase luminosa, que ocurre en la membrana de los tilacoides, la energía solar se emplea para romper moléculas de agua (fotólisis), liberando oxígeno molecular (O2) a la atmósfera y generando moléculas energéticas de ATP y NADPH. Posteriormente, en la fase oscura o Ciclo de Calvin, desarrollada en el estroma del cloroplasto sin necesidad directa de luz, el ATP y el NADPH se utilizan para fijar el carbono del CO2 y sintetizar glucosa y otros glúcidos esenciales para el crecimiento vegetal.`
+            },
+            {
+              id: 's2-texto-pdf',
+              filename: 'Texto_Base_Fotosintesis_Fisiologia_Vegetal.pdf',
+              label: 'Texto Base en formato PDF',
+              badge: 'ARCHIVO PDF',
+              format: 'pdf',
+              pdfTitle: 'UNIDAD DIDÁCTICA: LA FOTOSÍNTESIS',
+              pdfSubtitle: 'Biología y Geología - Fuente Curricular para NotebookLM',
+              description: 'Versión PDF lista para subir directamente como fuente documental a NotebookLM.',
+              content: `UNIDAD DIDÁCTICA: LA NUTRICIÓN AUTÓTROFA Y LA FOTOSÍNTESIS
+
+La fotosíntesis es el proceso anabólico fundamental mediante el cual las plantas, las algas y ciertas bacterias transforman la energía lumínica del Sol en energía química estable. Este fenómeno tiene lugar principalmente en las células parenquimáticas de las hojas, dentro de unos orgánulos especializados denominados cloroplastos, los cuales contienen clorofila, el pigmento fotosintético responsable de captar los fotones de luz.
+
+Para que se produzca la síntesis de materia orgánica, la planta necesita incorporar dióxido de carbono (CO2) procedente de la atmósfera y agua (H2O) absorbida por la raíz. El intercambio gaseoso entre la hoja y el aire exterior se realiza a través de unos poros microscópicos situados mayoritariamente en el envés de las hojas llamados estomas. Cada uno de estos poros está delimitado por dos células oclusivas que regulan su apertura y cierre para permitir la entrada de CO2 y controlar la transpiración.
+
+Desde el punto de vista bioquímico, la fotosíntesis se divide en dos etapas acopladas. En la fase luminosa (tilacoides), la energía solar rompe moléculas de agua (fotólisis), liberando oxígeno (O2) y generando ATP y NADPH. En la fase oscura o Ciclo de Calvin (estroma), esa energía se utiliza para fijar el CO2 y sintetizar glucosa.`
+            }
+          ],
+          tools: [
+            {
+              name: 'Abrir NotebookLM',
+              url: 'https://notebooklm.google.com',
+              color: 'emerald'
+            },
+            {
+              name: 'Abrir Gemini (Canvas / Artefactos)',
+              url: 'https://gemini.google.com',
+              color: 'cyan'
+            }
+          ]
+        },
+        {
+          id: 3,
+          shortName: 'Sala 3',
+          title: 'SALA 3: "El Oráculo de la Evaluación"',
+          challenge: 'Crear una Skill Correctora con la Rúbrica PDF adjunta y evaluar las entregas de los Alumnos A y B.',
+          hint: 'Thomas Edison no perfeccionó la máquina de vapor en 1769. ¿Qué apellido escocés ha corregido tu Skill?',
+          password: 'WATT',
+          icon: `<svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>`,
+          materials: [
+            {
+              id: 's3-rubrica-pdf',
+              filename: 'Rubrica_Evaluacion_Revolucion_Industrial.pdf',
+              label: 'Rúbrica Oficial de Evaluación (PDF)',
+              badge: 'PDF ADJUNTO',
+              format: 'pdf',
+              pdfTitle: 'RÚBRICA OFICIAL DE EVALUACIÓN - HISTORIA (4º ESO)',
+              pdfSubtitle: 'Tema: La Primera Revolución Industrial (Siglos XVIII - XIX)',
+              description: 'Rúbrica PDF oficial con los 4 criterios de calificación para adjuntar a tu Skill Correctora.',
+              content: `RÚBRICA OFICIAL DE EVALUACIÓN - GEOGRAFÍA E HISTORIA (4º ESO)
+TAREA: Ensayo breve sobre los orígenes e impacto de la Primera Revolución Industrial.
+
+CRITERIO 1: RIGOR HISTÓRICO, CRONOLOGÍA Y PROTAGONISTAS (2,5 PUNTOS)
+- Nivel 4 (2,5 pts): Sitúa correctamente el inicio en Gran Bretaña (segunda mitad s. XVIII) e identifica con precisión los hitos técnicos (ej. máquina de vapor perfeccionada por el ingeniero escocés James Watt en 1769). Sin anacronismos.
+- Nivel 3 (1,75 pts): Cronología y ubicación correctas con alguna imprecisión menor en fechas o inventores.
+- Nivel 2 (1,0 pt): Confunde fechas, lugares o atribuye inventos clave a personajes de otras épocas.
+- Nivel 1 (0,25 pts): Errores históricos graves y ausencia de contextualización temporal.
+
+CRITERIO 2: FUENTES DE ENERGÍA Y TRANSFORMACIÓN PRODUCTIVA (2,5 PUNTOS)
+- Nivel 4 (2,5 pts): Explica con claridad el uso del carbón mineral, la mecanización textil y el paso del taller artesanal a la fábrica.
+- Nivel 3 (1,75 pts): Menciona el carbón y las fábricas, aunque con explicación superficial.
+- Nivel 2 (1,0 pt): Enumera máquinas sin relacionarlas con el cambio de modelo productivo.
+- Nivel 1 (0,25 pts): No identifica las bases tecnológicas ni energéticas del proceso.
+
+CRITERIO 3: CONSECUENCIAS ECONÓMICAS Y SOCIALES (2,5 PUNTOS)
+- Nivel 4 (2,5 pts): Analiza el éxodo rural, el crecimiento urbano, el ferrocarril y la aparición de la burguesía industrial y el proletariado.
+- Nivel 3 (1,75 pts): Señala cambios sociales y de transporte de forma adecuada pero incompleta.
+- Nivel 2 (1,0 pt): Descripción muy vaga de los cambios en la población o el trabajo.
+- Nivel 1 (0,25 pts): Omite el impacto social y económico.
+
+CRITERIO 4: ESTRUCTURA, COHESIÓN Y VOCABULARIO HISTÓRICO (2,5 PUNTOS)
+- Nivel 4 (2,5 pts): Texto bien estructurado (introducción, desarrollo, conclusión), registro formal y léxico histórico preciso.
+- Nivel 3 (1,75 pts): Estructura clara con vocabulario adecuado y escasos errores formales.
+- Nivel 2 (1,0 pt): Redacción desordenada o excesivamente coloquial.
+- Nivel 1 (0,25 pts): Texto inconexo con graves faltas de expresión.`
+            },
+            {
+              id: 's3-alumno-a',
+              filename: 'Entrega_Alumno_A.txt',
+              label: 'Entrega Alumno A',
+              badge: 'EVIDENCIA A',
+              format: 'text',
+              mime: 'text/plain;charset=utf-8',
+              description: 'Trabajo entregado por el Alumno A para evaluar con la rúbrica.',
+              content: `ALUMNO A — TAREA: LOS ORÍGENES DE LA PRIMERA REVOLUCIÓN INDUSTRIAL
+
+La Primera Revolución Industrial fue un profundo proceso de transformación económica, tecnológica y social que se inició en Gran Bretaña durante la segunda mitad del siglo XVIII. Uno de sus principales motores tecnológicos fue el perfeccionamiento de la máquina de vapor realizado por el ingeniero escocés James Watt en 1769, un avance que permitió aprovechar la energía térmica del carbón mineral para mover maquinaria pesada de forma continua.
+
+Gracias a esta innovación y a los telares mecánicos, la producción abandonó los pequeños talleres artesanales para concentrarse en grandes fábricas, incrementando enormemente la productividad en sectores como el textil y la siderurgia. Asimismo, la aplicación del vapor al transporte dio lugar al ferrocarril y al barco de vapor, reduciendo drásticamente los tiempos y costes comerciales.
+
+En el plano social, este proceso provocó un intenso éxodo rural hacia las ciudades industriales y consolidó una nueva sociedad de clases articulada en torno a la burguesía propietaria del capital y el proletariado obrero, que inicialmente soportó duras jornadas laborales.`
+            },
+            {
+              id: 's3-alumno-b',
+              filename: 'Entrega_Alumno_B.txt',
+              label: 'Entrega Alumno B',
+              badge: 'EVIDENCIA B',
+              format: 'text',
+              mime: 'text/plain;charset=utf-8',
+              description: 'Trabajo entregado por el Alumno B (contiene errores históricos para corregir).',
+              content: `ALUMNO B — TAREA: LA REVOLUCION INDUSTRIAL
+
+La revolucion industrial empezo cuando Thomas Edison perfecciono la maquina de vapor en 1769 en Estados Unidos y gracias a eso la gente pudo conectarse mejor y hacer cosas mas rapido en las tiendas. Antes todo se hacia a mano en el campo y luego pusieron maquinas que funcionaban con gasolina e internet para mandar pedidos a otros paises.
+
+Tambien hubo cambios en las ciudades porque mucha gente se mudo alli a trabajar muchas horas seguidas. En resumen fue una epoca importante donde se inventaron muchas cosas modernas que usamos hoy en dia en casa.`
+            }
+          ],
+          tools: [
+            {
+              name: 'Abrir Google Gemini (Skill Correctora)',
+              url: 'https://gemini.google.com',
+              color: 'cyan'
+            }
+          ]
+        },
+        {
+          id: 4,
+          shortName: 'Sala 4',
+          title: 'SALA 4: "Ecosistema Conectado"',
+          challenge: 'Publicar la tarea con rúbrica en Google Classroom y generar una presentación de 6 diapositivas en Canva desde una tabla de Gemini.',
+          hint: 'Muestra vuestra tarea de Classroom y presentación de Canva al formador para obtener el código maestro.',
+          password: 'CLAUSTRO-LIBRE',
+          icon: `<svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" /></svg>`,
+          materials: [
+            {
+              id: 's4-guia-flujo',
+              filename: 'Guia_Flujo_Classroom_Gemini_Canva.txt',
+              label: 'Guía de Despliegue (6 Diapositivas)',
+              badge: 'GUÍA + PROMPT',
+              format: 'text',
+              mime: 'text/plain;charset=utf-8',
+              description: 'Prompt estructurado para generar la tabla de 6 diapositivas en Gemini y pasos de verificación.',
+              content: `PROTOCOLO FINAL DE DESPLIEGUE — SALA 4: ECOSISTEMA CONECTADO
+========================================================================
+
+PASO 1: GENERACIÓN DE TABLA ESTRUCTURADA EN GEMINI
+Copia y adapta este prompt en Gemini para obtener la estructura exacta de tu presentación:
+
+"Actúa como diseñador instruccional. Genera una tabla en formato Markdown con exactamente 6 filas (una por diapositiva) para explicar a alumnado de Secundaria los puntos clave de nuestra unidad trabajada. Usa exactamente estas 4 columnas:
+| Nº Diapositiva | Título | Contenido clave (máx. 3 viñetas breves) | Sugerencia visual / icono |"
+
+PASO 2: CREACIÓN AUTOMÁTICA EN CANVA
+1. Abre Canva > Crea una Presentación (16:9) o usa Diseño Mágico / Carga en lote.
+2. Traslada la estructura de las 6 diapositivas generadas en la tabla de Gemini y aplica una plantilla visual coherente.
+
+PASO 3: PUBLICACIÓN EN GOOGLE CLASSROOM
+1. Crea una Tarea en tu clase de prueba de Google Classroom.
+2. Adjunta el material de apoyo y vincula la Guía de Evaluación / Rúbrica con sus niveles de desempeño.
+3. Publica la tarea y muestra ambas pestañas (Classroom + Presentación de 6 diapositivas en Canva) al formador/a del taller para recibir el código maestro.`
+            },
+            {
+              id: 's4-checklist',
+              filename: 'Checklist_Validacion_Formador.txt',
+              label: 'Checklist de Validación Final',
+              badge: 'CONTROL FINAL',
+              format: 'text',
+              mime: 'text/plain;charset=utf-8',
+              description: 'Criterios que revisará el formador/a para entregaros la clave de liberación del claustro.',
+              content: `HOJA DE VERIFICACIÓN PARA EL FORMADOR/A — MISIÓN: CLAUSTRO AUMENTADO
+
+[ ] 1. Tarea creada y publicada en Google Classroom con título e instrucciones claras para el alumnado.
+[ ] 2. Guía de evaluación / Rúbrica asociada a la tarea en Google Classroom con criterios y puntuaciones.
+[ ] 3. Tabla estructurada de 6 diapositivas generada previamente con Gemini.
+[ ] 4. Presentación de 6 diapositivas montada en Canva con diseño limpio y legible.
+
+Una vez verificados los 4 puntos en el aula, el formador facilitará la contraseña maestra de desbloqueo final.`
+            }
+          ],
+          tools: [
+            {
+              name: 'Google Classroom',
+              url: 'https://classroom.google.com',
+              color: 'emerald'
+            },
+            {
+              name: 'Google Gemini',
+              url: 'https://gemini.google.com',
+              color: 'cyan'
+            },
+            {
+              name: 'Canva',
+              url: 'https://www.canva.com',
+              color: 'amber'
+            }
+          ]
+        }
+      ];
+
+      // ===================================================================
+      // 2. ESTADO GLOBAL DE LA APLICACIÓN
+      // ===================================================================
+      const DEFAULT_DRIVE_URL = 'https://drive.google.com/drive/my-drive';
+
+      function getInitialDriveUrl() {
+        try {
+          const params = new URLSearchParams(window.location.search);
+          const paramDrive = params.get('drive');
+          if (paramDrive && paramDrive.startsWith('http')) {
+            localStorage.setItem('claustro_drive_url', paramDrive);
+            return paramDrive;
+          }
+          const saved = localStorage.getItem('claustro_drive_url');
+          if (saved && saved.startsWith('http')) return saved;
+        } catch (e) {
+          // Ignorar restricciones de storage
+        }
+        return DEFAULT_DRIVE_URL;
+      }
+
+      const state = {
+        phase: 'welcome', // 'welcome' | 'playing' | 'share' | 'victory'
+        currentRoomIndex: 0, // 0 a 3
+        completedRooms: [false, false, false, false],
+        hintsRevealed: [false, false, false, false],
+        remainingSeconds: INITIAL_SECONDS,
+        isRunning: false,
+        timerInterval: null,
+        soundEnabled: true,
+        teamName: '',
+        driveUrl: getInitialDriveUrl(),
+        activeModalMaterial: null,
+      };
+
+      // ===================================================================
+      // 3. REFERENCIAS AL DOM
+      // ===================================================================
+      const dom = {
+        welcomeScreen: document.getElementById('welcome-screen'),
+        roomScreen: document.getElementById('room-screen'),
+        shareScreen: document.getElementById('share-screen'),
+        victoryScreen: document.getElementById('victory-screen'),
+        progressStepper: document.getElementById('progress-stepper'),
+
+        // Header HUD
+        timerDisplay: document.getElementById('timer-display'),
+        timerSublabel: document.getElementById('timer-sublabel'),
+        penaltyAnchor: document.getElementById('penalty-anchor'),
+        statusBadge: document.getElementById('system-status-badge'),
+        statusDot: document.getElementById('status-dot'),
+        statusText: document.getElementById('status-text'),
+
+        // Botones Timer y Sonido
+        btnTimerStart: document.getElementById('btn-timer-start'),
+        btnTimerPause: document.getElementById('btn-timer-pause'),
+        btnTimerReset: document.getElementById('btn-timer-reset'),
+        btnSoundToggle: document.getElementById('btn-sound-toggle'),
+        iconSoundOn: document.getElementById('icon-sound-on'),
+        iconSoundOff: document.getElementById('icon-sound-off'),
+
+        // Bienvenida
+        teamNameInput: document.getElementById('team-name-input'),
+        btnStartMission: document.getElementById('btn-start-mission'),
+
+        // Sala Actual
+        roomCard: document.getElementById('room-card'),
+        roomSectorTag: document.getElementById('room-sector-tag'),
+        roomTitle: document.getElementById('room-title'),
+        roomIconBox: document.getElementById('room-icon-box'),
+        roomChallenge: document.getElementById('room-challenge'),
+        roomFilesGrid: document.getElementById('room-files-grid'),
+        roomToolsBar: document.getElementById('room-tools-bar'),
+        btnRequestHint: document.getElementById('btn-request-hint'),
+        hintBtnLabel: document.getElementById('hint-btn-label'),
+        hintBox: document.getElementById('hint-box'),
+        hintText: document.getElementById('hint-text'),
+        unlockForm: document.getElementById('unlock-form'),
+        roomPasswordInput: document.getElementById('room-password-input'),
+        passwordFeedback: document.getElementById('password-feedback'),
+
+        // Modal de Materiales Extra
+        materialModal: document.getElementById('material-modal'),
+        materialModalTag: document.getElementById('material-modal-tag'),
+        materialModalTitle: document.getElementById('material-modal-title'),
+        materialModalContent: document.getElementById('material-modal-content'),
+        btnCloseMaterialModal: document.getElementById('btn-close-material-modal'),
+        btnModalCopy: document.getElementById('btn-modal-copy'),
+        btnModalDownload: document.getElementById('btn-modal-download'),
+        btnModalDownloadLabel: document.getElementById('btn-modal-download-label'),
+
+        // Pantalla Intermedia Compartir en Drive
+        btnToggleDriveConfig: document.getElementById('btn-toggle-drive-config'),
+        driveConfigPanel: document.getElementById('drive-config-panel'),
+        driveUrlInput: document.getElementById('drive-url-input'),
+        btnSaveDriveUrl: document.getElementById('btn-save-drive-url'),
+        btnCopyShareableAppUrl: document.getElementById('btn-copy-shareable-app-url'),
+        driveFolderLinkBtn: document.getElementById('drive-folder-link-btn'),
+        btnCopyDriveLink: document.getElementById('btn-copy-drive-link'),
+        shareTeamInput: document.getElementById('share-team-input'),
+        shareLinksInput: document.getElementById('share-links-input'),
+        btnDownloadContribution: document.getElementById('btn-download-contribution'),
+        btnCopyContribution: document.getElementById('btn-copy-contribution'),
+        btnGoToDiploma: document.getElementById('btn-go-to-diploma'),
+
+        // Victoria y Diploma
+        statTimeUsed: document.getElementById('stat-time-used'),
+        statTimeLeft: document.getElementById('stat-time-left'),
+        statHintsUsed: document.getElementById('stat-hints-used'),
+        diplomaDate: document.getElementById('diploma-date'),
+        diplomaTeamInput: document.getElementById('diploma-team-input'),
+        diplomaTimeSummary: document.getElementById('diploma-time-summary'),
+        btnDownloadDiploma: document.getElementById('btn-download-diploma'),
+        btnPrintDiploma: document.getElementById('btn-print-diploma'),
+        btnBackToDrive: document.getElementById('btn-back-to-drive'),
+        confettiCanvas: document.getElementById('confetti-canvas'),
+
+        // Modal Reinicio y Toasts
+        confirmModal: document.getElementById('confirm-modal'),
+        btnCancelReset: document.getElementById('btn-cancel-reset'),
+        btnConfirmReset: document.getElementById('btn-confirm-reset'),
+        toastContainer: document.getElementById('toast-container'),
+      };
+
+      // ===================================================================
+      // 4. GENERADOR DE ARCHIVOS DESCARGABLES (TXT, MD Y PDF BINARIO REAL)
+      // ===================================================================
+
+      /**
+       * Normaliza texto español a caracteres WinAnsiEncoding (ISO-8859-1)
+       * para que las fuentes estándar Type1 de PDF muestren tildes y ñ sin errores.
+       */
+      function toWinAnsiBytes(str) {
+        const normalized = str
+          .replace(/[\u2018\u2019]/g, "'")
+          .replace(/[\u201C\u201D]/g, '"')
+          .replace(/[\u2013\u2014]/g, '-')
+          .replace(/\u2026/g, '...')
+          .replace(/\u2022/g, '*');
+
+        const bytes = [];
+        for (let i = 0; i < normalized.length; i++) {
+          const code = normalized.charCodeAt(i);
+          if (code === 40 || code === 41 || code === 92) {
+            // Escapar '(', ')' y '\' en literales de cadena PDF
+            bytes.push(92, code);
+          } else if (code >= 32 && code <= 255) {
+            bytes.push(code);
+          } else {
+            bytes.push(32);
+          }
+        }
+        return bytes;
+      }
+
+      /**
+       * Divide párrafos largos en líneas ajustadas al ancho de página PDF.
+       */
+      function wrapTextLines(rawText, maxChars) {
+        const paragraphs = rawText.split('\n');
+        const result = [];
+        paragraphs.forEach((para) => {
+          const trimmed = para.trimEnd();
+          if (trimmed.length === 0) {
+            result.push('');
+            return;
+          }
+          if (trimmed.length <= maxChars) {
+            result.push(trimmed);
+            return;
+          }
+          const words = trimmed.split(' ');
+          let current = '';
+          words.forEach((word) => {
+            if ((current + (current ? ' ' : '') + word).length <= maxChars) {
+              current += (current ? ' ' : '') + word;
+            } else {
+              if (current) result.push(current);
+              current = word;
+            }
+          });
+          if (current) result.push(current);
+        });
+        return result;
+      }
+
+      /**
+       * Construye un archivo PDF 1.4 válido en memoria (Uint8Array) sin dependencias externas.
+       */
+      function buildRealPdfBlob(title, subtitle, bodyText) {
+        const lines = wrapTextLines(bodyText, 86);
+        const linesPerPage = 44;
+        const pages = [];
+        for (let i = 0; i < lines.length; i += linesPerPage) {
+          pages.push(lines.slice(i, i + linesPerPage));
+        }
+        if (pages.length === 0) pages.push(['']);
+
+        // Construcción de objetos PDF con seguimiento exacto de bytes
+        const chunks = [];
+        let byteLength = 0;
+        const offsets = [0]; // Objeto 0 libre
+
+        function pushAscii(str) {
+          const arr = new Uint8Array(str.length);
+          for (let i = 0; i < str.length; i++) arr[i] = str.charCodeAt(i) & 0xff;
+          chunks.push(arr);
+          byteLength += arr.length;
+        }
+
+        function pushBytes(byteArr) {
+          const arr = new Uint8Array(byteArr);
+          chunks.push(arr);
+          byteLength += arr.length;
+        }
+
+        function startObj(id) {
+          offsets[id] = byteLength;
+          pushAscii(`${id} 0 obj\n`);
+        }
+
+        function endObj() {
+          pushAscii('\nendobj\n');
+        }
+
+        // Cabecera PDF
+        pushAscii('%PDF-1.4\n');
+
+        // Obj 1: Catalog
+        startObj(1);
+        pushAscii('<< /Type /Catalog /Pages 2 0 R >>');
+        endObj();
+
+        // Calcular IDs:
+        // Obj 2: Pages
+        // Obj 3: Font Helvetica
+        // Obj 4: Font Helvetica-Bold
+        // Páginas: Obj 5, 6, ... (2 objetos por página: Page + Content Stream)
+        const pageObjIds = [];
+        let nextId = 5;
+        pages.forEach(() => {
+          pageObjIds.push(nextId);
+          nextId += 2;
+        });
+
+        // Obj 2: Pages
+        startObj(2);
+        pushAscii(`<< /Type /Pages /Kids [${pageObjIds.map((id) => `${id} 0 R`).join(' ')}] /Count ${pages.length} >>`);
+        endObj();
+
+        // Obj 3: Helvetica Regular con WinAnsiEncoding
+        startObj(3);
+        pushAscii('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>');
+        endObj();
+
+        // Obj 4: Helvetica Bold con WinAnsiEncoding
+        startObj(4);
+        pushAscii('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>');
+        endObj();
+
+        // Generar cada página y su stream de contenido
+        pages.forEach((pageLines, idx) => {
+          const pageId = pageObjIds[idx];
+          const contentId = pageId + 1;
+
+          // Construir stream de operaciones PDF en bytes
+          const streamBytes = [];
+          function addStreamAscii(s) {
+            for (let i = 0; i < s.length; i++) streamBytes.push(s.charCodeAt(i) & 0xff);
+          }
+
+          // Marco superior decorativo
+          addStreamAscii('0.05 0.45 0.56 RG 1.5 w 45 795 m 550 795 l S\n');
+          addStreamAscii('0.05 0.45 0.56 RG 0.8 w 45 752 m 550 752 l S\n');
+
+          // Título principal en cabecera
+          addStreamAscii('BT /F2 13 Tf 0.04 0.25 0.35 rg 45 778 Td (');
+          streamBytes.push(...toWinAnsiBytes(title));
+          addStreamAscii(') Tj ET\n');
+
+          // Subtítulo
+          addStreamAscii('BT /F1 9 Tf 0.35 0.42 0.50 rg 45 762 Td (');
+          streamBytes.push(...toWinAnsiBytes(`${subtitle}  |  Pagina ${idx + 1} de ${pages.length}`));
+          addStreamAscii(') Tj ET\n');
+
+          // Cuerpo de líneas
+          let y = 730;
+          pageLines.forEach((line) => {
+            const isHeading =
+              line.startsWith('CRITERIO') ||
+              line.startsWith('UNIDAD') ||
+              line.startsWith('RÚBRICA') ||
+              line.startsWith('TAREA:');
+            const fontRef = isHeading ? '/F2 10 Tf 0.05 0.32 0.44 rg' : '/F1 9.5 Tf 0.10 0.12 0.16 rg';
+            addStreamAscii(`BT ${fontRef} 45 ${y} Td (`);
+            streamBytes.push(...toWinAnsiBytes(line));
+            addStreamAscii(') Tj ET\n');
+            y -= 15;
+          });
+
+          // Pie de página
+          addStreamAscii('BT /F1 8 Tf 0.45 0.50 0.58 rg 45 36 Td (');
+          streamBytes.push(...toWinAnsiBytes('Material Oficial - Escape Room Docente: Mision Claustro Aumentado'));
+          addStreamAscii(') Tj ET\n');
+
+          // Objeto Page
+          startObj(pageId);
+          pushAscii(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents ${contentId} 0 R >>`);
+          endObj();
+
+          // Objeto Content Stream
+          startObj(contentId);
+          pushAscii(`<< /Length ${streamBytes.length} >>\nstream\n`);
+          pushBytes(streamBytes);
+          pushAscii('\nendstream');
+          endObj();
+        });
+
+        // Tabla xref
+        const xrefOffset = byteLength;
+        pushAscii(`xref\n0 ${nextId}\n`);
+        pushAscii('0000000000 65535 f \n');
+        for (let i = 1; i < nextId; i++) {
+          const offStr = String(offsets[i]).padStart(10, '0');
+          pushAscii(`${offStr} 00000 n \n`);
+        }
+
+        // Trailer
+        pushAscii(`trailer\n<< /Size ${nextId} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`);
+
+        return new Blob(chunks, { type: 'application/pdf' });
+      }
+
+      /**
+       * Descarga cualquiera de los materiales extra de la sala en su formato real (.pdf, .md, .txt).
+       */
+      function downloadMaterialFile(material) {
+        try {
+          let blob;
+          if (material.format === 'pdf') {
+            blob = buildRealPdfBlob(
+              material.pdfTitle || material.label,
+              material.pdfSubtitle || 'Recurso Oficial de la Misión',
+              material.content
+            );
+          } else {
+            blob = new Blob([material.content], { type: material.mime || 'text/plain;charset=utf-8' });
+          }
+
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = material.filename;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+
+          playSound('success');
+          showToast(`Archivo descargado: ${material.filename}`, 'success');
+        } catch (err) {
+          showToast('No se pudo generar la descarga del archivo.', 'error');
+        }
+      }
+
+      /**
+       * Copia texto al portapapeles usando el método compatible con iFrames.
+       */
+      function copyTextToClipboard(text, successMsg) {
+        const tempArea = document.createElement('textarea');
+        tempArea.value = text;
+        tempArea.style.position = 'fixed';
+        tempArea.style.opacity = '0';
+        document.body.appendChild(tempArea);
+        tempArea.select();
+        try {
+          document.execCommand('copy');
+          playSound('click');
+          showToast(successMsg || 'Contenido copiado al portapapeles.', 'success');
+        } catch (e) {
+          showToast('No se pudo copiar automáticamente. Selecciónalo manualmente.', 'warning');
+        } finally {
+          document.body.removeChild(tempArea);
+        }
+      }
+
+      /**
+       * Abre el modal de vista previa / copia para un material específico.
+       */
+      function openMaterialModal(material) {
+        state.activeModalMaterial = material;
+        dom.materialModalTag.textContent = `${material.badge} // ${material.filename}`;
+        dom.materialModalTitle.textContent = material.label;
+        dom.materialModalContent.textContent = material.content;
+        dom.btnModalDownloadLabel.textContent = `Descargar ${material.filename}`;
+        dom.materialModal.classList.remove('hidden');
+        dom.materialModal.classList.add('flex');
+        playSound('click');
+      }
+
+      function closeMaterialModal() {
+        dom.materialModal.classList.add('hidden');
+        dom.materialModal.classList.remove('flex');
+        state.activeModalMaterial = null;
+      }
+
+      // ===================================================================
+      // 5. SINTETIZADOR DE EFECTOS DE SONIDO (WEB AUDIO API)
+      // ===================================================================
+      let audioCtx = null;
+
+      function getAudioContext() {
+        if (!audioCtx) {
+          const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+          if (AudioContextClass) {
+            audioCtx = new AudioContextClass();
+          }
+        }
+        if (audioCtx && audioCtx.state === 'suspended') {
+          audioCtx.resume();
+        }
+        return audioCtx;
+      }
+
+      function playSound(type) {
+        if (!state.soundEnabled) return;
+        try {
+          const ctx = getAudioContext();
+          if (!ctx) return;
+
+          const now = ctx.currentTime;
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+
+          if (type === 'click') {
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(620, now);
+            osc.frequency.exponentialRampToValueAtTime(880, now + 0.06);
+            gain.gain.setValueAtTime(0.08, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.07);
+            osc.start(now);
+            osc.stop(now + 0.07);
+          } else if (type === 'error') {
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(175, now);
+            osc.frequency.linearRampToValueAtTime(115, now + 0.25);
+            gain.gain.setValueAtTime(0.12, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+            osc.start(now);
+            osc.stop(now + 0.28);
+          } else if (type === 'penalty') {
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(440, now);
+            osc.frequency.linearRampToValueAtTime(220, now + 0.35);
+            gain.gain.setValueAtTime(0.12, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.38);
+            osc.start(now);
+            osc.stop(now + 0.38);
+          } else if (type === 'success') {
+            const notes = [523.25, 659.25, 783.99]; // Do - Mi - Sol
+            notes.forEach((freq, idx) => {
+              const o = ctx.createOscillator();
+              const g = ctx.createGain();
+              o.type = 'triangle';
+              o.connect(g);
+              g.connect(ctx.destination);
+              o.frequency.setValueAtTime(freq, now + idx * 0.09);
+              g.gain.setValueAtTime(0.11, now + idx * 0.09);
+              g.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.09 + 0.25);
+              o.start(now + idx * 0.09);
+              o.stop(now + idx * 0.09 + 0.26);
+            });
+          } else if (type === 'victory') {
+            const fanfare = [523.25, 659.25, 783.99, 1046.5];
+            fanfare.forEach((freq, idx) => {
+              const o = ctx.createOscillator();
+              const g = ctx.createGain();
+              o.type = 'sine';
+              o.connect(g);
+              g.connect(ctx.destination);
+              o.frequency.setValueAtTime(freq, now + idx * 0.13);
+              g.gain.setValueAtTime(0.14, now + idx * 0.13);
+              g.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.13 + 0.55);
+              o.start(now + idx * 0.13);
+              o.stop(now + idx * 0.13 + 0.56);
+            });
+          }
+        } catch (e) {
+          // Ignorar restricciones de audio del navegador
+        }
+      }
+
+      // ===================================================================
+      // 6. FORMATEO DE TIEMPO Y CONTROL DEL TEMPORIZADOR
+      // ===================================================================
+      function formatSeconds(totalSecs) {
+        const clamped = Math.max(0, Math.floor(totalSecs));
+        const hours = Math.floor(clamped / 3600);
+        const minutes = Math.floor((clamped % 3600) / 60);
+        const seconds = clamped % 60;
+        return [
+          String(hours).padStart(2, '0'),
+          String(minutes).padStart(2, '0'),
+          String(seconds).padStart(2, '0')
+        ].join(':');
+      }
+
+      function updateTimerUI() {
+        dom.timerDisplay.textContent = formatSeconds(state.remainingSeconds);
+
+        const minsLeft = Math.ceil(state.remainingSeconds / 60);
+        dom.timerSublabel.textContent = state.remainingSeconds > 0
+          ? `${minsLeft} MIN RESTANTES`
+          : 'TIEMPO AGOTADO';
+
+        // Cambiar color según urgencia
+        dom.timerDisplay.classList.remove('text-cyan-300', 'text-amber-400', 'text-rose-500');
+        if (state.remainingSeconds <= 600) {
+          dom.timerDisplay.classList.add('text-rose-500');
+        } else if (state.remainingSeconds <= 1800) {
+          dom.timerDisplay.classList.add('text-amber-400');
+        } else {
+          dom.timerDisplay.classList.add('text-cyan-300');
+        }
+
+        // Actualizar indicador de estado en el header
+        if (state.phase === 'victory' || state.phase === 'share') {
+          dom.statusBadge.className = 'inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono bg-emerald-500/15 text-emerald-300 border border-emerald-500/30';
+          dom.statusDot.className = 'w-1.5 h-1.5 rounded-full bg-emerald-400';
+          dom.statusText.textContent = 'RESTAURADO';
+        } else if (state.isRunning) {
+          dom.statusBadge.className = 'inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono bg-cyan-500/15 text-cyan-300 border border-cyan-500/30';
+          dom.statusDot.className = 'w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping';
+          dom.statusText.textContent = 'EN CURSO';
+        } else {
+          dom.statusBadge.className = 'inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono bg-amber-500/15 text-amber-300 border border-amber-500/30';
+          dom.statusDot.className = 'w-1.5 h-1.5 rounded-full bg-amber-400';
+          dom.statusText.textContent = 'PAUSADO';
+        }
+      }
+
+      function startTimer(silent = false) {
+        if (state.isRunning || state.remainingSeconds <= 0) return;
+        state.isRunning = true;
+        updateTimerUI();
+        if (!silent) {
+          playSound('click');
+          showToast('Temporizador en marcha.', 'info');
+        }
+
+        state.timerInterval = setInterval(() => {
+          if (state.remainingSeconds > 0) {
+            state.remainingSeconds -= 1;
+            updateTimerUI();
+          } else {
+            pauseTimer(true);
+            showToast('¡El tiempo de 180 minutos ha llegado a 00:00:00!', 'error');
+          }
+        }, 1000);
+      }
+
+      function pauseTimer(silent = false) {
+        if (!state.isRunning) return;
+        state.isRunning = false;
+        if (state.timerInterval) {
+          clearInterval(state.timerInterval);
+          state.timerInterval = null;
+        }
+        updateTimerUI();
+        if (!silent) {
+          playSound('click');
+          showToast('Temporizador pausado.', 'warning');
+        }
+      }
+
+      function resetAllMission() {
+        pauseTimer(true);
+        stopConfetti();
+        state.phase = 'welcome';
+        state.currentRoomIndex = 0;
+        state.completedRooms = [false, false, false, false];
+        state.hintsRevealed = [false, false, false, false];
+        state.remainingSeconds = INITIAL_SECONDS;
+
+        dom.welcomeScreen.classList.remove('hidden');
+        dom.roomScreen.classList.add('hidden');
+        dom.shareScreen.classList.add('hidden');
+        dom.victoryScreen.classList.add('hidden');
+
+        updateTimerUI();
+        renderStepper();
+        playSound('click');
+        showToast('Misión reiniciada a 180 minutos.', 'info');
+      }
+
+      function triggerPenaltyAnimation() {
+        const badge = document.createElement('span');
+        badge.textContent = '-02:00';
+        badge.className = 'inline-block font-hud text-xs font-extrabold text-rose-400 bg-rose-950/90 border border-rose-500/50 px-2 py-0.5 rounded-lg shadow-lg animate-penalty';
+        dom.penaltyAnchor.appendChild(badge);
+        setTimeout(() => badge.remove(), 1550);
+      }
+
+      // ===================================================================
+      // 7. INDICADOR DE PROGRESO (SALA 1 A 4)
+      // ===================================================================
+      function renderStepper() {
+        dom.progressStepper.innerHTML = '';
+
+        ROOMS_DATA.forEach((room, idx) => {
+          const isCompleted = state.completedRooms[idx];
+          const isCurrent = state.phase === 'playing' && state.currentRoomIndex === idx;
+
+          const item = document.createElement('button');
+          item.type = 'button';
+          item.disabled = !isCompleted && !isCurrent;
+
+          let classes = 'flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-lg font-mono text-xs font-bold transition ';
+          let iconHtml = '';
+
+          if (isCompleted) {
+            classes += 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 cursor-default';
+            iconHtml = `<svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" /></svg>`;
+          } else if (isCurrent) {
+            classes += 'bg-cyan-500/25 text-cyan-200 border border-cyan-400 shadow-sm shadow-cyan-500/30 cursor-default';
+            iconHtml = `<span class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>`;
+          } else {
+            classes += 'bg-slate-900/70 text-slate-500 border border-slate-800 cursor-not-allowed';
+            iconHtml = `<svg class="w-3 h-3 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>`;
+          }
+
+          item.className = classes;
+          item.innerHTML = `${iconHtml}<span>${room.shortName}</span>`;
+          dom.progressStepper.appendChild(item);
+
+          // Conector entre salas
+          if (idx < ROOMS_DATA.length - 1) {
+            const line = document.createElement('div');
+            line.className = `h-0.5 w-2 sm:w-4 rounded ${isCompleted ? 'bg-emerald-500/60' : 'bg-slate-800'}`;
+            dom.progressStepper.appendChild(line);
+          }
+        });
+      }
+
+      // ===================================================================
+      // 8. RENDERIZADO DE LA SALA ACTIVA Y SUS MATERIALES EXTRA
+      // ===================================================================
+      function renderRoomMaterials(room) {
+        dom.roomFilesGrid.innerHTML = '';
+
+        room.materials.forEach((mat) => {
+          const isPdf = mat.format === 'pdf';
+          const badgeClasses = isPdf
+            ? 'bg-rose-500/15 text-rose-300 border-rose-500/40'
+            : 'bg-cyan-500/15 text-cyan-300 border-cyan-500/40';
+
+          const card = document.createElement('div');
+          card.className = 'p-4 rounded-2xl bg-[#0d1526] border border-slate-800 hover:border-cyan-500/40 transition flex flex-col justify-between gap-3';
+
+          card.innerHTML = `
+            <div>
+              <div class="flex items-center justify-between gap-2 mb-1.5">
+                <span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold border ${badgeClasses}">
+                  ${mat.badge}
+                </span>
+                <span class="text-[11px] font-mono text-slate-500 truncate max-w-[180px]" title="${mat.filename}">
+                  ${mat.filename}
+                </span>
+              </div>
+              <h4 class="text-sm font-bold text-white">${mat.label}</h4>
+              <p class="text-xs text-slate-400 mt-1 leading-relaxed">${mat.description}</p>
+            </div>
+            <div class="flex items-center gap-2 pt-1">
+              <button
+                type="button"
+                data-action="download"
+                class="flex-1 px-3 py-2 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 text-xs font-semibold flex items-center justify-center gap-1.5 transition active:scale-95 cursor-pointer"
+              >
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                <span>Descargar</span>
+              </button>
+              <button
+                type="button"
+                data-action="preview"
+                class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold flex items-center justify-center gap-1.5 transition active:scale-95 cursor-pointer"
+                title="Ver y copiar contenido"
+              >
+                <svg class="w-3.5 h-3.5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                </svg>
+                <span>Ver / Copiar</span>
+              </button>
+            </div>
+          `;
+
+          card.querySelector('[data-action="download"]').addEventListener('click', () => downloadMaterialFile(mat));
+          card.querySelector('[data-action="preview"]').addEventListener('click', () => openMaterialModal(mat));
+          dom.roomFilesGrid.appendChild(card);
+        });
+
+        // Enlaces externos de herramientas de IA de la sala
+        dom.roomToolsBar.innerHTML = `<span class="text-[11px] font-mono uppercase tracking-wider text-slate-400 mr-1">Herramientas de misión:</span>`;
+        room.tools.forEach((tool) => {
+          const colorMap = {
+            cyan: 'bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border-cyan-500/40',
+            emerald: 'bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border-emerald-500/40',
+            amber: 'bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border-amber-500/40',
+          };
+          const a = document.createElement('a');
+          a.href = tool.url;
+          a.target = '_blank';
+          a.rel = 'noopener noreferrer';
+          a.className = `inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold transition ${colorMap[tool.color] || colorMap.cyan}`;
+          a.innerHTML = `
+            <span>${tool.name}</span>
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+            </svg>
+          `;
+          dom.roomToolsBar.appendChild(a);
+        });
+      }
+
+      function loadRoom(index) {
+        state.currentRoomIndex = index;
+        const room = ROOMS_DATA[index];
+
+        dom.roomSectorTag.textContent = `SALA ${room.id} DE ${ROOMS_DATA.length}`;
+        dom.roomTitle.textContent = room.title;
+        dom.roomIconBox.innerHTML = room.icon;
+        dom.roomChallenge.textContent = room.challenge;
+
+        // Cargar archivos descargables y enlaces de herramientas
+        renderRoomMaterials(room);
+
+        // Estado de la pista de esta sala
+        const hintAlreadyUsed = state.hintsRevealed[index];
+        dom.hintText.textContent = room.hint;
+        if (hintAlreadyUsed) {
+          dom.hintBox.classList.remove('hidden');
+          dom.hintBtnLabel.textContent = 'Pista Desbloqueada';
+        } else {
+          dom.hintBox.classList.add('hidden');
+          dom.hintBtnLabel.textContent = 'Pedir Pista (-2 min)';
+        }
+
+        // Resetear input y mensajes de error
+        dom.roomPasswordInput.value = '';
+        dom.passwordFeedback.classList.add('hidden');
+        dom.passwordFeedback.textContent = '';
+
+        renderStepper();
+        setTimeout(() => dom.roomPasswordInput.focus(), 100);
+      }
+
+      function handleRequestHint() {
+        const idx = state.currentRoomIndex;
+        if (state.hintsRevealed[idx]) {
+          dom.hintBox.classList.remove('hidden');
+          showToast('La pista de esta sala ya está visible.', 'info');
+          return;
+        }
+
+        // Marcar pista revelada y restar 2 minutos
+        state.hintsRevealed[idx] = true;
+        state.remainingSeconds = Math.max(0, state.remainingSeconds - HINT_PENALTY_SECONDS);
+        updateTimerUI();
+        triggerPenaltyAnimation();
+        playSound('penalty');
+
+        dom.hintBox.classList.remove('hidden');
+        dom.hintBtnLabel.textContent = 'Pista Desbloqueada';
+        showToast('Pista revelada. Se han restado 2 minutos del temporizador.', 'warning');
+      }
+
+      function handlePasswordSubmit(event) {
+        event.preventDefault();
+        const idx = state.currentRoomIndex;
+        const room = ROOMS_DATA[idx];
+
+        // Normalizar: quitar espacios extra y convertir a mayúsculas
+        const rawInput = dom.roomPasswordInput.value || '';
+        const normalizedInput = rawInput.trim().replace(/\s+/g, '').toUpperCase();
+        const normalizedExpected = room.password.trim().replace(/\s+/g, '').toUpperCase();
+
+        if (!normalizedInput) {
+          showPasswordError('Introduce una contraseña antes de validar.');
+          return;
+        }
+
+        if (normalizedInput === normalizedExpected) {
+          // ¡Contraseña correcta!
+          state.completedRooms[idx] = true;
+          playSound('success');
+
+          dom.passwordFeedback.className = 'mt-3 text-xs sm:text-sm font-mono flex items-center gap-2 text-emerald-400';
+          dom.passwordFeedback.innerHTML = `
+            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" /></svg>
+            <span>¡CÓDIGO CORRECTO! Sala ${room.id} restaurada.</span>
+          `;
+          dom.passwordFeedback.classList.remove('hidden');
+
+          if (idx < ROOMS_DATA.length - 1) {
+            showToast(`¡${room.shortName} superada! Avanzando a la Sala ${idx + 2}...`, 'success');
+            setTimeout(() => {
+              loadRoom(idx + 1);
+            }, 650);
+          } else {
+            // Superada la Sala 4 -> Pantalla Intermedia de Compartir Retos en Drive
+            showToast('¡Sala 4 superada! Accediendo al repositorio compartido de Drive...', 'success');
+            setTimeout(() => {
+              openShareScreen();
+            }, 650);
+          }
+        } else {
+          // Contraseña incorrecta
+          playSound('error');
+          showPasswordError('ACCESO DENEGADO: Código incorrecto. Revisa el resultado de tu asistente IA o solicita una pista.');
+        }
+      }
+
+      function showPasswordError(message) {
+        dom.passwordFeedback.className = 'mt-3 text-xs sm:text-sm font-mono flex items-center gap-2 text-rose-400';
+        dom.passwordFeedback.innerHTML = `
+          <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+          <span>${message}</span>
+        `;
+        dom.passwordFeedback.classList.remove('hidden');
+
+        // Animación de sacudida
+        dom.roomCard.classList.remove('animate-shake');
+        void dom.roomCard.offsetWidth; // Forzar reflow
+        dom.roomCard.classList.add('animate-shake');
+        dom.roomPasswordInput.select();
+      }
+
+      // ===================================================================
+      // 9. PANTALLA INTERMEDIA DRIVE, VICTORIA FINAL Y DIPLOMA PNG
+      // ===================================================================
+      function syncDriveUrlUI() {
+        dom.driveFolderLinkBtn.href = state.driveUrl;
+        dom.driveUrlInput.value = state.driveUrl === DEFAULT_DRIVE_URL ? '' : state.driveUrl;
+      }
+
+      function buildContributionText() {
+        const team = (dom.shareTeamInput.value || state.teamName || 'Equipo Claustro Aumentado').trim();
+        const checked = Array.from(document.querySelectorAll('.share-evidence-cb:checked')).map((cb) => `- ${cb.value}`);
+        const notes = (dom.shareLinksInput.value || '').trim();
+        const nowStr = new Date().toLocaleDateString('es-ES');
+
+        return [
+          '========================================================================',
+          'APORTACIÓN AL REPOSITORIO DEL CLAUSTRO — MISIÓN: CLAUSTRO AUMENTADO',
+          '========================================================================',
+          `EQUIPO DOCENTE: ${team}`,
+          `FECHA: ${nowStr}`,
+          '',
+          'EVIDENCIAS Y RETOS GENERADOS:',
+          checked.length ? checked.join('\n') : '- Retos completados del taller',
+          '',
+          'ENLACES A ARTEFACTOS / PRESENTACIONES Y NOTAS DIDÁCTICAS:',
+          notes || '(Sin enlaces adicionales especificados en la ficha)',
+          '========================================================================'
+        ].join('\n');
+      }
+
+      function openShareScreen() {
+        state.phase = 'share';
+        pauseTimer(true);
+        stopConfetti();
+        updateTimerUI();
+        renderStepper();
+
+        dom.welcomeScreen.classList.add('hidden');
+        dom.roomScreen.classList.add('hidden');
+        dom.victoryScreen.classList.add('hidden');
+        dom.shareScreen.classList.remove('hidden');
+
+        syncDriveUrlUI();
+        if (!dom.shareTeamInput.value && state.teamName) {
+          dom.shareTeamInput.value = state.teamName;
+        }
+
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+
+      function triggerVictory() {
+        state.phase = 'victory';
+        pauseTimer(true);
+        updateTimerUI();
+        renderStepper();
+
+        dom.welcomeScreen.classList.add('hidden');
+        dom.roomScreen.classList.add('hidden');
+        dom.shareScreen.classList.add('hidden');
+        dom.victoryScreen.classList.remove('hidden');
+
+        // Calcular métricas
+        const secondsUsed = Math.max(0, INITIAL_SECONDS - state.remainingSeconds);
+        const formattedUsed = formatSeconds(secondsUsed);
+        const formattedLeft = formatSeconds(state.remainingSeconds);
+        const hintsCount = state.hintsRevealed.filter(Boolean).length;
+
+        dom.statTimeUsed.textContent = formattedUsed;
+        dom.statTimeLeft.textContent = formattedLeft;
+        dom.statHintsUsed.textContent = `${hintsCount} / ${ROOMS_DATA.length}`;
+        dom.diplomaTimeSummary.textContent = formattedUsed;
+
+        // Fecha actual formateada en español
+        const now = new Date();
+        const dateStr = now.toLocaleDateString('es-ES', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric'
+        });
+        // Nombre del equipo (priorizando si lo actualizaron en la ficha de Drive)
+        const updatedTeam = (dom.shareTeamInput.value || state.teamName || '').trim();
+        if (updatedTeam) state.teamName = updatedTeam;
+        const finalTeamName = state.teamName || 'Equipo Claustro Aumentado';
+        dom.diplomaTeamInput.value = finalTeamName;
+
+        playSound('victory');
+        startConfetti();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+
+      // --- Animación de Confeti en Canvas ---
+      let confettiAnimId = null;
+      let confettiParticles = [];
+
+      function startConfetti() {
+        const canvas = dom.confettiCanvas;
+        const ctx = canvas.getContext('2d');
+        const colors = ['#06b6d4', '#10b981', '#f59e0b', '#38bdf8', '#a7f3d0', '#f43f5e'];
+
+        function resizeCanvas() {
+          canvas.width = window.innerWidth;
+          canvas.height = window.innerHeight;
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        confettiParticles = Array.from({ length: 150 }, () => ({
+          x: Math.random() * canvas.width,
+          y: Math.random() * canvas.height - canvas.height,
+          w: Math.random() * 10 + 5,
+          h: Math.random() * 6 + 4,
+          color: colors[Math.floor(Math.random() * colors.length)],
+          speedY: Math.random() * 3 + 2,
+          speedX: Math.random() * 2 - 1,
+          rotation: Math.random() * 360,
+          rotationSpeed: Math.random() * 6 - 3,
+        }));
+
+        function animate() {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          confettiParticles.forEach((p) => {
+            p.y += p.speedY;
+            p.x += p.speedX;
+            p.rotation += p.rotationSpeed;
+
+            if (p.y > canvas.height + 20) {
+              p.y = -20;
+              p.x = Math.random() * canvas.width;
+            }
+
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            ctx.rotate((p.rotation * Math.PI) / 180);
+            ctx.fillStyle = p.color;
+            ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+            ctx.restore();
+          });
+          confettiAnimId = requestAnimationFrame(animate);
+        }
+
+        animate();
+      }
+
+      function stopConfetti() {
+        if (confettiAnimId) {
+          cancelAnimationFrame(confettiAnimId);
+          confettiAnimId = null;
+        }
+        const canvas = dom.confettiCanvas;
+        if (canvas) {
+          const ctx = canvas.getContext('2d');
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+      }
+
+      // --- Descarga del Diploma como Imagen PNG de Alta Resolución ---
+      function downloadDiplomaAsPNG() {
+        const canvas = document.createElement('canvas');
+        canvas.width = 1400;
+        canvas.height = 950;
+        const ctx = canvas.getContext('2d');
+
+        // Fondo oscuro degradado estilo centro de mando
+        const bgGrad = ctx.createLinearGradient(0, 0, 1400, 950);
+        bgGrad.addColorStop(0, '#070d19');
+        bgGrad.addColorStop(0.5, '#0f1c34');
+        bgGrad.addColorStop(1, '#060b16');
+        ctx.fillStyle = bgGrad;
+        ctx.fillRect(0, 0, 1400, 950);
+
+        // Cuadrícula sutil de fondo
+        ctx.strokeStyle = 'rgba(6, 182, 212, 0.08)';
+        ctx.lineWidth = 1;
+        for (let x = 0; x <= 1400; x += 40) {
+          ctx.beginPath();
+          ctx.moveTo(x, 0);
+          ctx.lineTo(x, 950);
+          ctx.stroke();
+        }
+        for (let y = 0; y <= 950; y += 40) {
+          ctx.beginPath();
+          ctx.moveTo(0, y);
+          ctx.lineTo(1400, y);
+          ctx.stroke();
+        }
+
+        // Marcos exteriores
+        ctx.strokeStyle = '#06b6d4';
+        ctx.lineWidth = 6;
+        ctx.strokeRect(36, 36, 1328, 878);
+
+        ctx.strokeStyle = 'rgba(16, 185, 129, 0.5)';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(54, 54, 1292, 842);
+
+        // Cabecera
+        ctx.fillStyle = '#22d3ee';
+        ctx.font = 'bold 20px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('CERTIFICACIÓN OFICIAL DE COMPETENCIA DIGITAL DOCENTE', 700, 130);
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '900 46px sans-serif';
+        ctx.fillText('MISIÓN: CLAUSTRO AUMENTADO', 700, 192);
+
+        // Línea divisoria
+        ctx.strokeStyle = 'rgba(6, 182, 212, 0.35)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(220, 230);
+        ctx.lineTo(1180, 230);
+        ctx.stroke();
+
+        // Texto de otorgamiento
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = 'bold 20px monospace';
+        ctx.fillText('SE OTORGA EL PRESENTE DIPLOMA DE ACREDITACIÓN AL EQUIPO:', 700, 295);
+
+        // Nombre del equipo
+        const teamName = (dom.diplomaTeamInput.value || 'Equipo Claustro Aumentado').trim();
+        ctx.fillStyle = '#34d399';
+        ctx.font = '900 50px sans-serif';
+        ctx.fillText(teamName.slice(0, 42), 700, 375);
+
+        // Línea bajo el nombre
+        ctx.strokeStyle = 'rgba(52, 211, 153, 0.5)';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(300, 400);
+        ctx.lineTo(1100, 400);
+        ctx.stroke();
+
+        // Descripción de logros
+        ctx.fillStyle = '#e2e8f0';
+        ctx.font = '24px sans-serif';
+        ctx.fillText('Por superar con éxito las 4 Salas de Restauración Educativa del taller:', 700, 468);
+        ctx.fillStyle = '#cbd5e1';
+        ctx.font = '21px sans-serif';
+        ctx.fillText('Skills de IA (Secretaría y Evaluación) • NotebookLM • Artefactos Interactivos • Classroom y Canva', 700, 508);
+
+        // 4 Cajas de Salas Superadas
+        const badges = [
+          'SALA 1: Skill Secretario/a',
+          'SALA 2: Archivo Vivo & App',
+          'SALA 3: Skill Correctora',
+          'SALA 4: Classroom & Canva'
+        ];
+        badges.forEach((label, idx) => {
+          const boxW = 275;
+          const gap = 24;
+          const startX = (1400 - (boxW * 4 + gap * 3)) / 2;
+          const bx = startX + idx * (boxW + gap);
+          const by = 570;
+
+          ctx.fillStyle = 'rgba(16, 185, 129, 0.14)';
+          ctx.fillRect(bx, by, boxW, 74);
+          ctx.strokeStyle = 'rgba(16, 185, 129, 0.55)';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(bx, by, boxW, 74);
+
+          ctx.fillStyle = '#34d399';
+          ctx.font = 'bold 16px monospace';
+          ctx.fillText('SUPERADA ✓', bx + boxW / 2, by + 28);
+
+          ctx.fillStyle = '#f8fafc';
+          ctx.font = 'bold 16px sans-serif';
+          ctx.fillText(label, bx + boxW / 2, by + 54);
+        });
+
+        // Pie de diploma: Fecha, Firma y Tiempo
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = 'bold 18px monospace';
+        ctx.textAlign = 'left';
+        ctx.fillText(dom.diplomaDate.textContent, 110, 815);
+        ctx.fillText(`TIEMPO INVERTIDO: ${dom.statTimeUsed.textContent}`, 110, 845);
+
+        ctx.textAlign = 'center';
+        ctx.strokeStyle = '#64748b';
+        ctx.beginPath();
+        ctx.moveTo(560, 815);
+        ctx.lineTo(840, 815);
+        ctx.stroke();
+        ctx.fillText('COORDINACIÓN TALLER IA DOCENTE', 700, 845);
+
+        ctx.textAlign = 'right';
+        ctx.fillStyle = '#22d3ee';
+        ctx.fillText('CÓDIGO: CLAUSTRO-LIBRE', 1290, 815);
+        ctx.fillStyle = '#34d399';
+        ctx.fillText('ESTADO: CLAUSTRO AUMENTADO', 1290, 845);
+
+        // Descargar archivo PNG
+        const link = document.createElement('a');
+        const safeFileName = teamName.toLowerCase().replace(/[^a-z0-9]+/g, '_') || 'claustro_aumentado';
+        link.download = `Diploma_${safeFileName}.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+
+        playSound('success');
+        showToast('Diploma descargado en formato PNG.', 'success');
+      }
+
+      // ===================================================================
+      // 10. SISTEMA DE NOTIFICACIONES TOAST
+      // ===================================================================
+      function showToast(message, type = 'info') {
+        const colors = {
+          info: 'bg-[#0d1526] border-cyan-500/50 text-cyan-200',
+          success: 'bg-[#0b1f1a] border-emerald-500/60 text-emerald-200',
+          warning: 'bg-[#211809] border-amber-500/60 text-amber-200',
+          error: 'bg-[#220b10] border-rose-500/60 text-rose-200',
+        };
+
+        const toast = document.createElement('div');
+        toast.className = `pointer-events-auto px-4 py-3 rounded-2xl border shadow-xl text-xs sm:text-sm font-medium backdrop-blur-md transition-all duration-300 transform translate-y-2 opacity-0 ${colors[type] || colors.info}`;
+        toast.textContent = message;
+
+        dom.toastContainer.appendChild(toast);
+        requestAnimationFrame(() => {
+          toast.classList.remove('translate-y-2', 'opacity-0');
+        });
+
+        setTimeout(() => {
+          toast.classList.add('opacity-0', 'translate-y-2');
+          setTimeout(() => toast.remove(), 300);
+        }, 3200);
+      }
+
+      // ===================================================================
+      // 11. EVENTOS DE INTERACCIÓN
+      // ===================================================================
+      dom.btnStartMission.addEventListener('click', () => {
+        state.teamName = dom.teamNameInput.value.trim();
+        state.phase = 'playing';
+
+        dom.welcomeScreen.classList.add('hidden');
+        dom.roomScreen.classList.remove('hidden');
+
+        loadRoom(0);
+        startTimer(true);
+        playSound('success');
+        showToast('¡Misión iniciada! El reloj de 180 minutos está en marcha.', 'success');
+      });
+
+      dom.btnTimerStart.addEventListener('click', () => startTimer(false));
+      dom.btnTimerPause.addEventListener('click', () => pauseTimer(false));
+
+      dom.btnTimerReset.addEventListener('click', () => {
+        playSound('click');
+        dom.confirmModal.classList.remove('hidden');
+        dom.confirmModal.classList.add('flex');
+      });
+
+      dom.btnCancelReset.addEventListener('click', () => {
+        dom.confirmModal.classList.add('hidden');
+        dom.confirmModal.classList.remove('flex');
+      });
+
+      dom.btnConfirmReset.addEventListener('click', () => {
+        dom.confirmModal.classList.add('hidden');
+        dom.confirmModal.classList.remove('flex');
+        resetAllMission();
+      });
+
+      dom.btnSoundToggle.addEventListener('click', () => {
+        state.soundEnabled = !state.soundEnabled;
+        dom.iconSoundOn.classList.toggle('hidden', !state.soundEnabled);
+        dom.iconSoundOff.classList.toggle('hidden', state.soundEnabled);
+        if (state.soundEnabled) playSound('click');
+      });
+
+      dom.btnRequestHint.addEventListener('click', handleRequestHint);
+      dom.unlockForm.addEventListener('submit', handlePasswordSubmit);
+
+      // Eventos del modal de materiales extra
+      dom.btnCloseMaterialModal.addEventListener('click', closeMaterialModal);
+      dom.materialModal.addEventListener('click', (e) => {
+        if (e.target === dom.materialModal) closeMaterialModal();
+      });
+      dom.btnModalCopy.addEventListener('click', () => {
+        if (state.activeModalMaterial) {
+          copyTextToClipboard(
+            state.activeModalMaterial.content,
+            `Copiado: ${state.activeModalMaterial.filename}`
+          );
+        }
+      });
+      dom.btnModalDownload.addEventListener('click', () => {
+        if (state.activeModalMaterial) {
+          downloadMaterialFile(state.activeModalMaterial);
+        }
+      });
+
+      // Eventos de la Pantalla Intermedia de Google Drive
+      dom.btnToggleDriveConfig.addEventListener('click', () => {
+        dom.driveConfigPanel.classList.toggle('hidden');
+        playSound('click');
+      });
+
+      dom.btnSaveDriveUrl.addEventListener('click', () => {
+        const val = dom.driveUrlInput.value.trim();
+        if (!val || !val.startsWith('http')) {
+          showToast('Introduce una URL válida que empiece por https://', 'warning');
+          return;
+        }
+        state.driveUrl = val;
+        try {
+          localStorage.setItem('claustro_drive_url', val);
+        } catch (e) {}
+        syncDriveUrlUI();
+        playSound('success');
+        showToast('Enlace de carpeta compartida de Drive guardado.', 'success');
+      });
+
+      dom.btnCopyShareableAppUrl.addEventListener('click', () => {
+        const baseUrl = window.location.href.split('?')[0];
+        const targetDrive = dom.driveUrlInput.value.trim() || state.driveUrl;
+        const fullUrl = `${baseUrl}?drive=${encodeURIComponent(targetDrive)}`;
+        copyTextToClipboard(fullUrl, 'URL del Escape Room con carpeta Drive incluida copiada.');
+      });
+
+      dom.btnCopyDriveLink.addEventListener('click', () => {
+        copyTextToClipboard(state.driveUrl, 'Enlace de la carpeta de Drive copiado al portapapeles.');
+      });
+
+      dom.btnDownloadContribution.addEventListener('click', () => {
+        const teamSlug = (dom.shareTeamInput.value || state.teamName || 'Equipo')
+          .trim()
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '_');
+        downloadMaterialFile({
+          filename: `Aportacion_${teamSlug}.txt`,
+          format: 'text',
+          mime: 'text/plain;charset=utf-8',
+          content: buildContributionText()
+        });
+      });
+
+      dom.btnCopyContribution.addEventListener('click', () => {
+        copyTextToClipboard(buildContributionText(), 'Ficha de aportación copiada al portapapeles.');
+      });
+
+      dom.btnGoToDiploma.addEventListener('click', () => {
+        triggerVictory();
+      });
+
+      dom.btnBackToDrive.addEventListener('click', () => {
+        playSound('click');
+        openShareScreen();
+      });
+
+      dom.btnDownloadDiploma.addEventListener('click', downloadDiplomaAsPNG);
+      dom.btnPrintDiploma.addEventListener('click', () => {
+        playSound('click');
+        window.print();
+      });
+
+      // Inicialización visual
+      syncDriveUrlUI();
+      updateTimerUI();
+      renderStepper();
+    })();
+  </script>
+</body>
+</html>
